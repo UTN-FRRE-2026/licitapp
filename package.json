@@ -18,7 +18,7 @@
     "expo-sharing": "~56.0.16",
     "expo-status-bar": "~56.0.4",
     "firebase": "^10.14.1",
-    "react": "19.2.7",
+    "react": "19.2.3",
     "react-hook-form": "^7.78.0",
     "react-native": "0.85.3",
     "react-native-web": "^0.21.2",
