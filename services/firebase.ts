@@ -23,6 +23,22 @@ const firebaseConfig = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 }
 
+// Las variables EXPO_PUBLIC_* se inlinean en tiempo de build. En un build de EAS,
+// si .env no se subió (está en .gitignore) y faltan en eas.json, quedan undefined
+// y Firebase crashea recién al usar Auth, con un error confuso (auth/invalid-api-key).
+// Fallamos temprano y con un mensaje claro que apunte a la causa real.
+const missingConfig = Object.entries(firebaseConfig)
+  .filter(([, value]) => !value)
+  .map(([key]) => key)
+
+if (missingConfig.length > 0) {
+  throw new Error(
+    `[firebase] Falta configuración: ${missingConfig.join(', ')}. ` +
+      'Definí las variables EXPO_PUBLIC_FIREBASE_* en el bloque "env" del perfil ' +
+      'correspondiente de eas.json (o en .env para correr en local).'
+  )
+}
+
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
 
 // initializeAuth must only be called once per app instance.
