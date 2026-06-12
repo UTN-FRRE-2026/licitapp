@@ -1,169 +1,96 @@
-import {
-  collection,
-  collectionGroup,
-  doc,
-  addDoc,
-  getDocs,
-  getDoc,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  serverTimestamp,
-  updateDoc,
-  Timestamp,
-  DocumentSnapshot,
-  runTransaction,
-} from 'firebase/firestore';
-import { db } from './firebase';
+import { api, poll } from './api';
 import type { Oferta, NuevaOfertaFormData, ShippingType } from '../types';
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
+// ─── DTO del backend ───────────────────────────────────────────────────────────
 
-function snapToOferta(snap: DocumentSnapshot, solicitudId?: string): Oferta {
-  const d = snap.data()!;
+interface OfertaDto {
+  id: string;
+  solicitudId: string;
+  corralonId: string;
+  corralonName: string;
+  corralonRating: number | null;
+  totalPrice: number;
+  shippingType: ShippingType;
+  shippingPrice: number | null;
+  deliveryHours: number;
+  validUntil: string; // ISO UTC
+  comment: string | null;
+  status: Oferta['status'];
+  isBestPrice: boolean;
+  isFastDelivery: boolean;
+  createdAt: string; // ISO UTC
+  solicitudTitle?: string | null;    // sólo en /api/ofertas/mine
+  solicitudDeadline?: string | null; // sólo en /api/ofertas/mine
+}
+
+function mapOferta(d: OfertaDto): Oferta {
   return {
-    id: snap.id,
-    solicitudId: solicitudId ?? d.solicitudId ?? '',
+    id: d.id,
+    solicitudId: d.solicitudId,
     solicitudTitle: d.solicitudTitle ?? undefined,
-    solicitudDeadline: d.solicitudDeadline?.toDate?.() ?? undefined,
+    solicitudDeadline: d.solicitudDeadline ? new Date(d.solicitudDeadline) : undefined,
     corralonId: d.corralonId,
     corralonName: d.corralonName,
     corralonRating: d.corralonRating ?? undefined,
     totalPrice: d.totalPrice,
-    shippingType: d.shippingType as ShippingType,
+    shippingType: d.shippingType,
     shippingPrice: d.shippingPrice ?? undefined,
     deliveryHours: d.deliveryHours,
-    validUntil: d.validUntil?.toDate?.() ?? new Date(),
+    validUntil: new Date(d.validUntil),
     comment: d.comment ?? undefined,
     status: d.status,
     isBestPrice: d.isBestPrice ?? false,
     isFastDelivery: d.isFastDelivery ?? false,
-    createdAt: d.createdAt?.toDate?.() ?? new Date(),
+    createdAt: new Date(d.createdAt),
   };
 }
 
 // ─── Crear oferta ─────────────────────────────────────────────────────────────
-// Guarda en subcollección + recalcula isBestPrice en transacción
+// corralonId/corralonName los deriva el backend del token; solicitudTitle/Deadline
+// ya no se envían (el backend los desnormaliza). Se conservan en la firma para no
+// tocar el hook que la consume.
 
 export async function createOferta(
   solicitudId: string,
-  solicitudTitle: string,
+  _solicitudTitle: string,
   solicitudDeadline: Date,
-  corralonId: string,
-  corralonName: string,
+  _corralonId: string,
+  _corralonName: string,
   data: NuevaOfertaFormData
 ): Promise<string> {
-  const newPrice = parseFloat(data.totalPrice);
-
-  await runTransaction(db, async (tx) => {
-    // Verifica que la solicitud sigue abierta
-    const solicitudRef = doc(db, 'solicitudes', solicitudId);
-    const solicitudSnap = await tx.get(solicitudRef);
-    if (!solicitudSnap.exists() || solicitudSnap.data().status !== 'OPEN') {
-      throw new Error('Esta licitación ya no está activa.');
-    }
-
-    // Obtiene ofertas existentes para recalcular badges
-    const ofertasSnap = await getDocs(
-      collection(db, 'solicitudes', solicitudId, 'ofertas')
-    );
-    const precios = ofertasSnap.docs
-      .filter((d) => d.data().status === 'ACTIVE')
-      .map((d) => d.data().totalPrice as number);
-
-    const isBestPrice = precios.length === 0 || newPrice <= Math.min(...precios);
-    const minDelivery = solicitudSnap.data().deadline?.toDate?.() ?? new Date();
-    const isFastDelivery =
-      data.deliveryHours !== undefined &&
-      parseInt(data.deliveryHours) <= 24;
-
-    // Si la nueva es la mejor → quitar badge a la anterior
-    if (isBestPrice) {
-      ofertasSnap.docs.forEach((d) => {
-        if (d.data().isBestPrice) {
-          tx.update(d.ref, { isBestPrice: false });
-        }
-      });
-    }
-
-    // Crea la nueva oferta
-    const nuevaRef = doc(collection(db, 'solicitudes', solicitudId, 'ofertas'));
-    tx.set(nuevaRef, {
-      solicitudId,
-      solicitudTitle,
-      solicitudDeadline: Timestamp.fromDate(solicitudDeadline),
-      corralonId,
-      corralonName,
-      totalPrice: newPrice,
-      shippingType: data.shippingType,
-      shippingPrice: data.shippingPrice ? parseFloat(data.shippingPrice) : null,
-      deliveryHours: parseInt(data.deliveryHours),
-      validUntil: Timestamp.fromDate(data.validUntil ?? solicitudDeadline),
-      comment: data.comment ?? null,
-      status: 'ACTIVE',
-      isBestPrice,
-      isFastDelivery,
-      createdAt: serverTimestamp(),
-    });
-
-    // Incrementa el contador en la solicitud
-    tx.update(solicitudRef, {
-      ofertasCount: (solicitudSnap.data().ofertasCount ?? 0) + 1,
-    });
+  const dto = await api.post<OfertaDto>(`/api/solicitudes/${solicitudId}/ofertas`, {
+    totalPrice: parseFloat(data.totalPrice),
+    shippingType: data.shippingType,
+    shippingPrice: data.shippingPrice ? parseFloat(data.shippingPrice) : undefined,
+    deliveryHours: parseInt(data.deliveryHours, 10),
+    validUntil: (data.validUntil ?? solicitudDeadline).toISOString(),
+    comment: data.comment ?? undefined,
   });
-
-  // Retorna el id de la nueva oferta (busca la última del corralón)
-  const q = query(
-    collection(db, 'solicitudes', solicitudId, 'ofertas'),
-    where('corralonId', '==', corralonId),
-    orderBy('createdAt', 'desc')
-  );
-  const snap = await getDocs(q);
-  return snap.docs[0]?.id ?? '';
+  return dto.id;
 }
 
-// ─── Ofertas de una solicitud (para comparar — constructor) ───────────────────
+// ─── Ofertas de una solicitud (constructor compara) ───────────────────────────
 
 export async function getOfertasBySolicitud(solicitudId: string): Promise<Oferta[]> {
-  const q = query(
-    collection(db, 'solicitudes', solicitudId, 'ofertas'),
-    where('status', '==', 'ACTIVE'),
-    orderBy('totalPrice', 'asc')
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => snapToOferta(d, solicitudId));
+  const dtos = await api.get<OfertaDto[]>(`/api/solicitudes/${solicitudId}/ofertas`);
+  return dtos.map(mapOferta);
 }
 
 export function listenToOfertasBySolicitud(
   solicitudId: string,
   callback: (ofertas: Oferta[]) => void
 ): () => void {
-  const q = query(
-    collection(db, 'solicitudes', solicitudId, 'ofertas'),
-    where('status', '==', 'ACTIVE'),
-    orderBy('totalPrice', 'asc')
+  return poll(
+    () => api.get<OfertaDto[]>(`/api/solicitudes/${solicitudId}/ofertas`),
+    (dtos) => callback(dtos.map(mapOferta))
   );
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map((d) => snapToOferta(d, solicitudId)));
-  });
 }
 
-// ─── Mis ofertas (corralón) — collectionGroup ─────────────────────────────────
-// Requiere índice en Firestore: ofertas → corralonId ASC + createdAt DESC
+// ─── Mis ofertas (corralón) ────────────────────────────────────────────────────
 
-export async function getMyOfertas(corralonId: string): Promise<Oferta[]> {
-  const q = query(
-    collectionGroup(db, 'ofertas'),
-    where('corralonId', '==', corralonId),
-    orderBy('createdAt', 'desc')
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => {
-    // El path es solicitudes/{solicitudId}/ofertas/{ofertaId}
-    const solicitudId = d.ref.parent.parent?.id ?? '';
-    return snapToOferta(d, solicitudId);
-  });
+export async function getMyOfertas(_corralonId?: string): Promise<Oferta[]> {
+  const dtos = await api.get<OfertaDto[]>('/api/ofertas/mine');
+  return dtos.map(mapOferta);
 }
 
 // ─── Resumen de competencia para banner de "Cargar oferta" ───────────────────
@@ -171,17 +98,9 @@ export async function getMyOfertas(corralonId: string): Promise<Oferta[]> {
 export async function getCompetenciaResumen(
   solicitudId: string
 ): Promise<{ count: number; bestPrice: number | null }> {
-  const snap = await getDocs(
-    query(
-      collection(db, 'solicitudes', solicitudId, 'ofertas'),
-      where('status', '==', 'ACTIVE')
-    )
+  return api.get<{ count: number; bestPrice: number | null }>(
+    `/api/solicitudes/${solicitudId}/ofertas/resumen`
   );
-  const active = snap.docs.map((d) => d.data().totalPrice as number);
-  return {
-    count: active.length,
-    bestPrice: active.length > 0 ? Math.min(...active) : null,
-  };
 }
 
 // ─── Obtener una oferta por id ────────────────────────────────────────────────
@@ -190,82 +109,51 @@ export async function getOfertaById(
   solicitudId: string,
   ofertaId: string
 ): Promise<Oferta | null> {
-  const snap = await getDoc(doc(db, 'solicitudes', solicitudId, 'ofertas', ofertaId));
-  if (!snap.exists()) return null;
-  return snapToOferta(snap, solicitudId);
+  try {
+    return mapOferta(
+      await api.get<OfertaDto>(`/api/solicitudes/${solicitudId}/ofertas/${ofertaId}`)
+    );
+  } catch {
+    return null;
+  }
 }
 
-// ─── Aceptar oferta — transaction atómica ─────────────────────────────────────
-// 1. Verifica OPEN, 2. WON al ganador, 3. LOST al resto, 4. CLOSED en solicitud
+// ─── Aceptar oferta (constructor) ─────────────────────────────────────────────
+// El backend cierra la licitación y actualiza WON/LOST + stats en una transacción.
 
 export async function acceptOffer(
   solicitudId: string,
   winningOfertaId: string,
-  constructorId: string,
-  corralonId: string
+  _constructorId: string,
+  _corralonId: string
 ): Promise<void> {
-  // Obtiene refs de todas las ofertas antes del transaction
-  const ofertasSnap = await getDocs(
-    collection(db, 'solicitudes', solicitudId, 'ofertas')
-  );
-
-  await runTransaction(db, async (tx) => {
-    const solicitudRef = doc(db, 'solicitudes', solicitudId);
-    const solicitudSnap = await tx.get(solicitudRef);
-
-    if (!solicitudSnap.exists() || solicitudSnap.data().status !== 'OPEN') {
-      throw new Error('Esta licitación ya no está disponible.');
-    }
-
-    // Marcar ofertas WON / LOST
-    ofertasSnap.docs.forEach((d) => {
-      if (d.data().status === 'ACTIVE') {
-        tx.update(d.ref, {
-          status: d.id === winningOfertaId ? 'WON' : 'LOST',
-        });
-      }
-    });
-
-    // Cerrar la solicitud
-    tx.update(solicitudRef, {
-      status: 'CLOSED',
-      winningOfferId: winningOfertaId,
-    });
-
-    // Incrementar stats constructor
-    const constructorRef = doc(db, 'users', constructorId);
-    const constructorSnap = await tx.get(constructorRef);
-    tx.update(constructorRef, {
-      'stats.totalCierres': ((constructorSnap.data()?.stats?.totalCierres ?? 0) as number) + 1,
-    });
-
-    // Incrementar stats corralón
-    const corralonRef = doc(db, 'users', corralonId);
-    const corralonSnap = await tx.get(corralonRef);
-    tx.update(corralonRef, {
-      'stats.totalCierres': ((corralonSnap.data()?.stats?.totalCierres ?? 0) as number) + 1,
-    });
+  await api.post(`/api/solicitudes/${solicitudId}/accept`, {
+    ofertaId: winningOfertaId,
   });
 }
 
 // ─── Editar oferta (sólo si la solicitud está OPEN) ──────────────────────────
+// Nota: el backend NO permite editar validUntil en la edición.
 
 export async function updateOferta(
   solicitudId: string,
   ofertaId: string,
-  data: Partial<{ totalPrice: number; shippingType: ShippingType; shippingPrice: number; deliveryHours: number; comment: string }>
+  data: Partial<{
+    totalPrice: number;
+    shippingType: ShippingType;
+    shippingPrice: number;
+    deliveryHours: number;
+    comment: string;
+  }>
 ): Promise<void> {
-  await updateDoc(
-    doc(db, 'solicitudes', solicitudId, 'ofertas', ofertaId),
-    data
-  );
+  await api.put(`/api/solicitudes/${solicitudId}/ofertas/${ofertaId}`, data);
 }
 
 // ─── Retirar oferta ───────────────────────────────────────────────────────────
 
-export async function withdrawOferta(solicitudId: string, ofertaId: string): Promise<void> {
-  await updateDoc(
-    doc(db, 'solicitudes', solicitudId, 'ofertas', ofertaId),
-    { status: 'WITHDRAWN' }
-  );
+export async function withdrawOferta(
+  solicitudId: string,
+  ofertaId: string
+): Promise<void> {
+  await api.post(`/api/solicitudes/${solicitudId}/ofertas/${ofertaId}/withdraw`);
 }

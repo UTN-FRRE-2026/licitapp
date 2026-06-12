@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
+import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { colors } from '../../constants/colors';
 
 type CardVariant = 'default' | 'flat' | 'highlight';
@@ -7,7 +7,7 @@ type CardVariant = 'default' | 'flat' | 'highlight';
 interface CardProps {
   children: React.ReactNode;
   variant?: CardVariant;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function Card({ children, variant = 'default', style }: CardProps) {

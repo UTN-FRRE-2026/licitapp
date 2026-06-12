@@ -15,7 +15,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { getUserProfile } from '../../services/auth.service';
 import { getSolicitudById } from '../../services/solicitudes.service';
-import type { UserProfile, Solicitud } from '../../types';
+import type { UserContactDto, Solicitud } from '../../types';
 
 export default function VentaCerradaScreen() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function VentaCerradaScreen() {
   }>();
 
   const [solicitud, setSolicitud] = useState<Solicitud | null>(null);
-  const [constructor_, setConstructor] = useState<UserProfile | null>(null);
+  const [constructor_, setConstructor] = useState<UserContactDto | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function VentaCerradaScreen() {
         const sol = await getSolicitudById(params.solicitudId);
         setSolicitud(sol);
         if (sol?.constructorId) {
-          const profile = await getUserProfile(sol.constructorId);
+          const profile = await getUserProfile(sol.constructorId).catch(() => null);
           setConstructor(profile);
         }
       } finally {

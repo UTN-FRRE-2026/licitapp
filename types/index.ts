@@ -20,6 +20,18 @@ export interface UserProfile {
   };
 }
 
+// Subconjunto público devuelto por GET /api/users/{uid}: datos de contacto de
+// la contraparte de una operación (no incluye email / pushToken / stats).
+export interface UserContactDto {
+  uid: string;
+  fullName: string;
+  role: UserRole;
+  phone: string;
+  zone: string;
+  businessName: string | null;
+  verified: boolean;
+}
+
 // ─── Solicitudes / Licitaciones ─────────────────────────────────────────────
 
 export type SolicitudStatus = 'OPEN' | 'CLOSED' | 'CANCELLED' | 'EXPIRED';

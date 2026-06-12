@@ -1,146 +1,125 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  serverTimestamp,
-  writeBatch,
-  Timestamp,
-  DocumentSnapshot,
-} from 'firebase/firestore';
-import { db } from './firebase';
+import { api, poll } from './api';
 import type { Solicitud, Material, NuevaSolicitudFormData } from '../types';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── DTO del backend ───────────────────────────────────────────────────────────
 
-function snapToSolicitud(snap: DocumentSnapshot): Solicitud {
-  const d = snap.data()!;
+interface MaterialDto {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
+interface SolicitudDto {
+  id: string;
+  constructorId: string;
+  constructorName: string;
+  title: string;
+  deliveryZone: string;
+  deadline: string; // ISO UTC
+  notes: string | null;
+  attachmentUrl: string | null;
+  status: Solicitud['status'];
+  winningOfferId: string | null;
+  ofertasCount: number;
+  corralonesNotifiedCount: number;
+  createdAt: string; // ISO UTC
+  materiales?: MaterialDto[];
+}
+
+function mapSolicitud(d: SolicitudDto): Solicitud {
   return {
-    id: snap.id,
+    id: d.id,
     constructorId: d.constructorId,
     constructorName: d.constructorName,
     title: d.title,
     deliveryZone: d.deliveryZone,
-    deadline: d.deadline?.toDate?.() ?? new Date(),
+    deadline: new Date(d.deadline),
     notes: d.notes ?? undefined,
     attachmentUrl: d.attachmentUrl ?? undefined,
     status: d.status,
     winningOfferId: d.winningOfferId ?? undefined,
     ofertasCount: d.ofertasCount ?? 0,
     corralonesNotifiedCount: d.corralonesNotifiedCount ?? 0,
-    createdAt: d.createdAt?.toDate?.() ?? new Date(),
+    createdAt: new Date(d.createdAt),
+    materiales: d.materiales?.map(
+      (m): Material => ({ id: m.id, name: m.name, quantity: m.quantity, unit: m.unit })
+    ),
   };
 }
 
 // ─── Crear solicitud ─────────────────────────────────────────────────────────
-// Usa batch para escribir el documento padre y todos sus materiales de forma atómica
+// constructorId/constructorName los deriva el backend del token (se ignoran acá,
+// se conservan en la firma para no tocar el hook que la consume).
 
 export async function createSolicitud(
-  constructorId: string,
-  constructorName: string,
+  _constructorId: string,
+  _constructorName: string,
   data: NuevaSolicitudFormData,
   attachmentUrl?: string
 ): Promise<string> {
-  const batch = writeBatch(db);
-
-  const solicitudRef = doc(collection(db, 'solicitudes'));
-
-  batch.set(solicitudRef, {
-    constructorId,
-    constructorName,
+  const dto = await api.post<SolicitudDto>('/api/solicitudes', {
     title: data.title,
     deliveryZone: data.deliveryZone,
-    deadline: Timestamp.fromDate(data.deadline),
-    notes: data.notes ?? null,
-    attachmentUrl: attachmentUrl ?? null,
-    status: 'OPEN',
-    winningOfferId: null,
-    ofertasCount: 0,
-    corralonesNotifiedCount: 0,
-    createdAt: serverTimestamp(),
+    deadline: data.deadline.toISOString(),
+    notes: data.notes ?? undefined,
+    attachmentUrl: attachmentUrl ?? undefined,
+    materiales: data.materiales.map((m) => ({
+      name: m.name.trim(),
+      quantity: parseFloat(m.quantity),
+      unit: m.unit,
+    })),
   });
-
-  for (const mat of data.materiales) {
-    const matRef = doc(collection(db, 'solicitudes', solicitudRef.id, 'materiales'));
-    batch.set(matRef, {
-      name: mat.name.trim(),
-      quantity: parseFloat(mat.quantity),
-      unit: mat.unit,
-    });
-  }
-
-  await batch.commit();
-  return solicitudRef.id;
+  return dto.id;
 }
 
 // ─── Mis solicitudes (constructor) ───────────────────────────────────────────
 
-export async function getMySolicitudes(constructorId: string): Promise<Solicitud[]> {
-  const q = query(
-    collection(db, 'solicitudes'),
-    where('constructorId', '==', constructorId),
-    orderBy('createdAt', 'desc')
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(snapToSolicitud);
+export async function getMySolicitudes(_constructorId?: string): Promise<Solicitud[]> {
+  const dtos = await api.get<SolicitudDto[]>('/api/solicitudes/mine');
+  return dtos.map(mapSolicitud);
 }
 
 // ─── Detalle de solicitud con materiales ─────────────────────────────────────
 
 export async function getSolicitudById(id: string): Promise<Solicitud | null> {
-  const snap = await getDoc(doc(db, 'solicitudes', id));
-  if (!snap.exists()) return null;
-
-  const matsSnap = await getDocs(collection(db, 'solicitudes', id, 'materiales'));
-  const materiales: Material[] = matsSnap.docs.map((m) => ({
-    id: m.id,
-    name: m.data().name,
-    quantity: m.data().quantity,
-    unit: m.data().unit,
-  }));
-
-  return { ...snapToSolicitud(snap), materiales };
+  try {
+    return mapSolicitud(await api.get<SolicitudDto>(`/api/solicitudes/${id}`));
+  } catch {
+    return null;
+  }
 }
 
-// ─── Listener en tiempo real (para pantalla "Solicitud publicada") ────────────
+// ─── "Listener" en tiempo real → polling (pantalla "Solicitud publicada") ──────
 
 export function listenToSolicitud(
   id: string,
   callback: (s: Solicitud) => void
 ): () => void {
-  return onSnapshot(doc(db, 'solicitudes', id), (snap) => {
-    if (snap.exists()) callback(snapToSolicitud(snap));
-  });
+  return poll(
+    () => api.get<SolicitudDto>(`/api/solicitudes/${id}`),
+    (dto) => callback(mapSolicitud(dto))
+  );
 }
 
-// ─── Feed para corralón (Sprint 3) ───────────────────────────────────────────
+// ─── Feed para corralón por zona ──────────────────────────────────────────────
 
 export async function getSolicitudesByZone(zone: string): Promise<Solicitud[]> {
-  const q = query(
-    collection(db, 'solicitudes'),
-    where('deliveryZone', '==', zone),
-    where('status', '==', 'OPEN'),
-    orderBy('deadline', 'asc')
+  const dtos = await api.get<SolicitudDto[]>(
+    `/api/solicitudes?zone=${encodeURIComponent(zone)}&status=OPEN`
   );
-  const snap = await getDocs(q);
-  return snap.docs.map(snapToSolicitud);
+  return dtos.map(mapSolicitud);
 }
 
 export function listenToFeedByZone(
   zone: string,
   callback: (solicitudes: Solicitud[]) => void
 ): () => void {
-  const q = query(
-    collection(db, 'solicitudes'),
-    where('deliveryZone', '==', zone),
-    where('status', '==', 'OPEN'),
-    orderBy('deadline', 'asc')
+  return poll(
+    () =>
+      api.get<SolicitudDto[]>(
+        `/api/solicitudes?zone=${encodeURIComponent(zone)}&status=OPEN`
+      ),
+    (dtos) => callback(dtos.map(mapSolicitud))
   );
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(snapToSolicitud));
-  });
 }

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../stores/authStore';
-import { onAuthStateChange, getUserProfile } from '../services/auth.service';
+import { onAuthStateChange, getMyProfile } from '../services/auth.service';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,12 +21,19 @@ function AuthGuard() {
   useEffect(() => {
     const unsubscribe = onAuthStateChange(async (firebaseUser) => {
       if (firebaseUser) {
-        try {
-          const profile = await getUserProfile(firebaseUser.uid);
-          setUser(profile);
-        } catch {
-          clear();
+        // Reintentos cortos: justo después del registro el perfil puede estar
+        // sincronizándose en el backend y /me devolver 404 por un instante.
+        let profile = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            profile = await getMyProfile();
+            break;
+          } catch {
+            await new Promise((r) => setTimeout(r, 400));
+          }
         }
+        if (profile) setUser(profile);
+        else clear();
       } else {
         clear();
       }

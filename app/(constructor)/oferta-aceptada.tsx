@@ -14,7 +14,7 @@ import { colors } from '../../constants/colors';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { getUserProfile } from '../../services/auth.service';
-import type { UserProfile } from '../../types';
+import type { UserContactDto } from '../../types';
 
 export default function OfertaAceptadaScreen() {
   const router = useRouter();
@@ -25,13 +25,14 @@ export default function OfertaAceptadaScreen() {
     totalPrice:     string;
   }>();
 
-  const [corralon, setCorralon] = useState<UserProfile | null>(null);
+  const [corralon, setCorralon] = useState<UserContactDto | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!params.corralonId) { setLoading(false); return; }
     getUserProfile(params.corralonId)
       .then(setCorralon)
+      .catch(() => setCorralon(null))
       .finally(() => setLoading(false));
   }, [params.corralonId]);
 
