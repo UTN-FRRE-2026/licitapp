@@ -16,6 +16,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as DocumentPicker from 'expo-document-picker';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { colors } from '../../constants/colors';
@@ -23,6 +24,8 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { useCreateOferta, useCompetenciaResumen } from '../../hooks/useOfertas';
+import { useAuthStore } from '../../stores/authStore';
+import { uploadFile, ofertaAttachmentPath } from '../../services/storage.service';
 import type { ShippingType } from '../../types';
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
@@ -71,9 +74,31 @@ export default function CargarOfertaScreen() {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [validUntil, setValidUntil] = useState(solicitudDeadline);
+  const [attachment, setAttachment] = useState<{ uri: string; name: string; mimeType: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
 
+  const user = useAuthStore((s) => s.user);
   const { data: competencia } = useCompetenciaResumen(solicitudId);
-  const { mutate: createOferta, isPending } = useCreateOferta(solicitudId);
+  const { mutateAsync: createOferta, isPending } = useCreateOferta(solicitudId);
+
+  const handlePickFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*'],
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setAttachment({
+          uri: asset.uri,
+          name: asset.name,
+          mimeType: asset.mimeType ?? 'application/octet-stream',
+        });
+      }
+    } catch {
+      Alert.alert('Error', 'No se pudo adjuntar el archivo.');
+    }
+  };
 
   const {
     control,
@@ -93,28 +118,37 @@ export default function CargarOfertaScreen() {
 
   const shippingType = watch('shippingType');
 
-  const onSubmit = (data: FormData) => {
-    createOferta(
-      {
+  const onSubmit = async (data: FormData) => {
+    try {
+      let attachmentUrl: string | undefined;
+
+      if (attachment && user) {
+        setUploading(true);
+        const path = ofertaAttachmentPath(user.uid, attachment.name);
+        attachmentUrl = await uploadFile(attachment.uri, path, attachment.mimeType);
+        setUploading(false);
+      }
+
+      await createOferta({
         solicitudTitle,
         solicitudDeadline,
         data: { ...data, validUntil },
-      },
-      {
-        onSuccess: () => {
-          router.replace('/(corralon)/mis-ofertas');
-        },
-        onError: (err: Error) => {
-          Alert.alert('Error', err.message ?? 'No se pudo enviar la oferta.');
-        },
-      }
-    );
+        attachmentUrl,
+      });
+      router.replace('/(corralon)/mis-ofertas');
+    } catch (err) {
+      setUploading(false);
+      const msg = err instanceof Error ? err.message : 'No se pudo enviar la oferta.';
+      Alert.alert('Error', msg);
+    }
   };
+
+  const isSubmitting = isPending || uploading;
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* Nav */}
       <View style={[styles.nav, { paddingTop: insets.top + 12 }]}>
@@ -271,15 +305,35 @@ export default function CargarOfertaScreen() {
           )}
         />
 
+        {/* Adjunto opcional — presupuesto o foto del material */}
+        <Text style={styles.sectionTitle}>Adjuntar archivo (opcional)</Text>
+        <Text style={styles.attachHelp}>
+          Subí un presupuesto en PDF o una foto del material. El cliente lo va a ver junto a tu oferta.
+        </Text>
+        <TouchableOpacity
+          style={styles.attachRow}
+          onPress={handlePickFile}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.attachText} numberOfLines={1}>
+            {attachment ? `📎 ${attachment.name}` : '📎 Elegir PDF o foto'}
+          </Text>
+          {attachment && (
+            <TouchableOpacity onPress={() => setAttachment(null)} hitSlop={8}>
+              <Text style={styles.attachRemove}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </TouchableOpacity>
+
         <View style={{ height: 120 }} />
       </ScrollView>
 
       {/* Footer sticky */}
       <View style={styles.footer}>
         <Button
-          label={isPending ? 'Enviando...' : 'Enviar oferta'}
+          label={uploading ? 'Subiendo archivo…' : isPending ? 'Enviando…' : 'Enviar oferta'}
           onPress={handleSubmit(onSubmit)}
-          loading={isPending}
+          loading={isSubmitting}
           variant="primary"
         />
       </View>
@@ -368,4 +422,24 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.gray[100],
   },
+  attachHelp: {
+    fontSize: 12,
+    color: colors.gray[500],
+    marginBottom: 10,
+    lineHeight: 16,
+  },
+  attachRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1.5,
+    borderColor: colors.gray[200],
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    backgroundColor: colors.gray[50],
+  },
+  attachText: { flex: 1, fontSize: 14, color: colors.gray[700], fontWeight: '500' },
+  attachRemove: { fontSize: 16, color: colors.gray[500], paddingHorizontal: 8 },
 });

@@ -79,6 +79,7 @@ export interface Oferta {
   deliveryHours: number;
   validUntil: Date;
   comment?: string;
+  attachmentUrl?: string;    // presupuesto/foto opcional que sube el corralón
   status: OfertaStatus;
   isBestPrice: boolean;
   isFastDelivery: boolean;

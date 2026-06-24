@@ -65,7 +65,7 @@ export default function CorralónLayout() {
         name="mis-ofertas"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="📦" label="Mis ofertas" focused={focused} />
+            <TabIcon emoji="📦" label="Ofertas" focused={focused} />
           ),
         }}
       />

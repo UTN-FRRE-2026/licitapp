@@ -1,65 +1,96 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { updateMyProfile } from './auth.service';
 
-// ─── Foreground handler ───────────────────────────────────────────────────────
-// Cuando llega un push y la app está abierta, lo mostramos como banner + lista.
-// No reproducimos sonido (lo dejamos al sistema operativo del usuario) ni
-// incrementamos el badge nativo (la lógica de "no leídas" la maneja el backend).
+// Desde Expo SDK 53, Expo Go ya no incluye el módulo nativo de push y solo
+// con importar `expo-notifications` se dispara una excepción a nivel módulo.
+// Detectamos el entorno y, si estamos en Expo Go, todas las funciones son no-op.
+// En dev builds / APK / standalone, el módulo se carga normal.
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+const isExpoGo = Constants.executionEnvironment === 'storeClient';
+
+type NotificationsModule = typeof import('expo-notifications');
+
+let cached: NotificationsModule | null = null;
+let warnedOnce = false;
+
+function getNotifications(): NotificationsModule | null {
+  if (isExpoGo) {
+    if (!warnedOnce) {
+      warnedOnce = true;
+      console.warn(
+        '[push] Expo Go no soporta push notifications desde SDK 53. ' +
+          'Para probar push hacé un dev build (eas build --profile development) o instalá la APK preview.'
+      );
+    }
+    return null;
+  }
+  if (!cached) {
+    // `require` perezoso: evita que Metro evalúe el módulo en Expo Go.
+    cached = require('expo-notifications') as NotificationsModule;
+  }
+  return cached;
+}
+
+// ─── Foreground handler ───────────────────────────────────────────────────────
+// Se setea la primera vez que getNotifications() devuelve el módulo.
+
+let handlerInitialized = false;
+function ensureForegroundHandler(N: NotificationsModule): void {
+  if (handlerInitialized) return;
+  handlerInitialized = true;
+  N.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 // ─── Canal de Android ─────────────────────────────────────────────────────────
-// Android 8.0+ exige declarar al menos un canal para mostrar notificaciones.
-// Usamos el canal "default" con prioridad alta para que aparezcan como heads-up.
 
-async function ensureAndroidChannel(): Promise<void> {
+async function ensureAndroidChannel(N: NotificationsModule): Promise<void> {
   if (Platform.OS !== 'android') return;
-  await Notifications.setNotificationChannelAsync('default', {
+  await N.setNotificationChannelAsync('default', {
     name: 'Alertas',
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: N.AndroidImportance.HIGH,
     vibrationPattern: [0, 250, 250, 250],
   });
 }
 
 // ─── Permisos ─────────────────────────────────────────────────────────────────
 
-async function ensurePermissions(): Promise<boolean> {
-  const existing = await Notifications.getPermissionsAsync();
+async function ensurePermissions(N: NotificationsModule): Promise<boolean> {
+  const existing = await N.getPermissionsAsync();
   if (existing.granted) return true;
-  // No volvemos a pedir si el usuario ya denegó explícitamente.
   if (!existing.canAskAgain) return false;
-  const next = await Notifications.requestPermissionsAsync({
+  const next = await N.requestPermissionsAsync({
     ios: { allowAlert: true, allowBadge: true, allowSound: true },
   });
   return next.granted;
 }
 
 // ─── Registrar el dispositivo y guardar el token en el backend ────────────────
-// Devuelve el Expo Push Token (o null si no se obtuvo). Idempotente: solo
-// actualiza el perfil cuando el token cambió respecto del almacenado.
 
 export async function registerForPushNotifications(
   currentSavedToken?: string
 ): Promise<string | null> {
+  const N = getNotifications();
+  if (!N) return null;
+
   try {
-    await ensureAndroidChannel();
-    const granted = await ensurePermissions();
+    ensureForegroundHandler(N);
+    await ensureAndroidChannel(N);
+    const granted = await ensurePermissions(N);
     if (!granted) return null;
 
     const projectId =
       Constants.expoConfig?.extra?.eas?.projectId ??
       (Constants.easConfig as { projectId?: string } | undefined)?.projectId;
 
-    const { data: token } = await Notifications.getExpoPushTokenAsync(
+    const { data: token } = await N.getExpoPushTokenAsync(
       projectId ? { projectId } : undefined
     );
 
@@ -67,31 +98,31 @@ export async function registerForPushNotifications(
       try {
         await updateMyProfile({ pushToken: token });
       } catch {
-        // No frenamos el flujo si el backend rechaza el token: el centro
-        // in-app sigue funcionando, y reintentamos al próximo login.
+        // El backend puede no haber implementado el endpoint todavía: no frenamos.
       }
     }
 
     return token ?? null;
   } catch {
-    // expo-notifications puede tirar en emuladores / web. Lo ignoramos.
     return null;
   }
 }
 
 // ─── Listeners ────────────────────────────────────────────────────────────────
-// onReceived → push entró con la app abierta: usado para refrescar el centro.
-// onResponded → el usuario tocó la notificación (foreground o desde lockscreen).
 
 export function addReceivedListener(handler: () => void): () => void {
-  const sub = Notifications.addNotificationReceivedListener(() => handler());
+  const N = getNotifications();
+  if (!N) return () => undefined;
+  const sub = N.addNotificationReceivedListener(() => handler());
   return () => sub.remove();
 }
 
 export function addResponseListener(
   handler: (data: Record<string, unknown>) => void
 ): () => void {
-  const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+  const N = getNotifications();
+  if (!N) return () => undefined;
+  const sub = N.addNotificationResponseReceivedListener((response) => {
     const data = response.notification.request.content.data ?? {};
     handler(data as Record<string, unknown>);
   });

@@ -56,6 +56,7 @@ export function useCreateOferta(solicitudId: string) {
       solicitudTitle: string;
       solicitudDeadline: Date;
       data: NuevaOfertaFormData;
+      attachmentUrl?: string;
     }) =>
       createOferta(
         solicitudId,
@@ -63,7 +64,8 @@ export function useCreateOferta(solicitudId: string) {
         payload.solicitudDeadline,
         user!.uid,
         user!.businessName ?? user!.fullName,
-        payload.data
+        payload.data,
+        payload.attachmentUrl
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ofertas', 'mias', user?.uid] });

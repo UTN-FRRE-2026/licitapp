@@ -15,6 +15,7 @@ interface OfertaDto {
   deliveryHours: number;
   validUntil: string; // ISO UTC
   comment: string | null;
+  attachmentUrl: string | null;
   status: Oferta['status'];
   isBestPrice: boolean;
   isFastDelivery: boolean;
@@ -38,6 +39,7 @@ function mapOferta(d: OfertaDto): Oferta {
     deliveryHours: d.deliveryHours,
     validUntil: new Date(d.validUntil),
     comment: d.comment ?? undefined,
+    attachmentUrl: d.attachmentUrl ?? undefined,
     status: d.status,
     isBestPrice: d.isBestPrice ?? false,
     isFastDelivery: d.isFastDelivery ?? false,
@@ -56,7 +58,8 @@ export async function createOferta(
   solicitudDeadline: Date,
   _corralonId: string,
   _corralonName: string,
-  data: NuevaOfertaFormData
+  data: NuevaOfertaFormData,
+  attachmentUrl?: string
 ): Promise<string> {
   const dto = await api.post<OfertaDto>(`/api/solicitudes/${solicitudId}/ofertas`, {
     totalPrice: parseFloat(data.totalPrice),
@@ -65,6 +68,7 @@ export async function createOferta(
     deliveryHours: parseInt(data.deliveryHours, 10),
     validUntil: (data.validUntil ?? solicitudDeadline).toISOString(),
     comment: data.comment ?? undefined,
+    attachmentUrl: attachmentUrl ?? undefined,
   });
   return dto.id;
 }

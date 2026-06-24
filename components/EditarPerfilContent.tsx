@@ -6,6 +6,8 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -79,6 +81,10 @@ export function EditarPerfilContent() {
         <View style={{ width: 36 }} />
       </View>
 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -157,6 +163,7 @@ export function EditarPerfilContent() {
           disabled={saving || !isDirty}
         />
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

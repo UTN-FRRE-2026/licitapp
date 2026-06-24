@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
+  Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -163,6 +164,28 @@ export default function DetalleOfertaScreen() {
           </>
         ) : null}
 
+        {/* Adjunto del corralón (presupuesto o foto) */}
+        {oferta.attachmentUrl ? (
+          <>
+            <Text style={styles.sectionTitle}>Adjunto del corralón</Text>
+            <TouchableOpacity
+              onPress={() => Linking.openURL(oferta.attachmentUrl!)}
+              activeOpacity={0.7}
+            >
+              <Card style={styles.attachmentCard}>
+                <Text style={styles.attachmentIcon}>📎</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.attachmentTitle}>Ver presupuesto / foto</Text>
+                  <Text style={styles.attachmentSub} numberOfLines={1}>
+                    Se abre en tu navegador
+                  </Text>
+                </View>
+                <Text style={styles.attachmentChev}>›</Text>
+              </Card>
+            </TouchableOpacity>
+          </>
+        ) : null}
+
         {/* Fecha */}
         <Text style={styles.dateText}>
           Oferta presentada el{' '}
@@ -264,6 +287,11 @@ const styles = StyleSheet.create({
   detailLabel: { fontSize: 14, color: colors.gray[600] },
   detailValue: { fontSize: 14, fontWeight: '600', color: colors.gray[800] },
   commentText: { fontSize: 14, color: colors.gray[700], fontStyle: 'italic', lineHeight: 20 },
+  attachmentCard: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  attachmentIcon: { fontSize: 24 },
+  attachmentTitle: { fontSize: 14, fontWeight: '700', color: colors.gray[900] },
+  attachmentSub: { fontSize: 12, color: colors.gray[500], marginTop: 2 },
+  attachmentChev: { fontSize: 22, color: colors.gray[400], fontWeight: '300' },
   dateText: { fontSize: 12, color: colors.gray[400], textAlign: 'center', marginTop: 16 },
   footer: {
     position: 'absolute',

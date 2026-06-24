@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore } from '../stores/authStore';
 import { onAuthStateChange, getMyProfile } from '../services/auth.service';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import { useImmersiveNavBar } from '../hooks/useImmersiveNavBar';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,6 +22,7 @@ function AuthGuard() {
   const { user, loading, setUser, setLoading, clear } = useAuthStore();
 
   usePushNotifications();
+  useImmersiveNavBar();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChange(async (firebaseUser) => {

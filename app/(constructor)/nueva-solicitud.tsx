@@ -1,5 +1,5 @@
 // Pantalla 05 — Nueva solicitud
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,10 @@ import {
   Platform,
   Modal,
   Pressable,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -67,6 +68,7 @@ export default function NuevaSolicitudScreen() {
     control,
     handleSubmit,
     watch,
+    reset,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -80,6 +82,22 @@ export default function NuevaSolicitudScreen() {
 
   const { fields, append, remove } = useFieldArray({ control, name: 'materiales' });
   const deliveryZone = watch('deliveryZone');
+
+  // La pantalla queda montada dentro del Tabs (href: null), así que el state del
+  // form sobrevive entre visitas. Cada vez que la pantalla gana foco la reseteamos
+  // para que arranque vacía (preservando solo la zona del perfil como sugerencia).
+  useFocusEffect(
+    useCallback(() => {
+      reset({
+        title: '',
+        materiales: [{ name: '', quantity: '', unit: 'unidades' }],
+        deliveryZone: user?.zone ?? '',
+        notes: '',
+      });
+      setDeadline(addHours(new Date(), 8));
+      setAttachment(null);
+    }, [reset, user?.zone])
+  );
 
   const handlePickFile = async () => {
     try {
@@ -131,6 +149,10 @@ export default function NuevaSolicitudScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
@@ -316,6 +338,7 @@ export default function NuevaSolicitudScreen() {
           loading={isSubmitting}
         />
       </View>
+      </KeyboardAvoidingView>
 
       {/* Modal selector de zona */}
       <ZonePickerModal

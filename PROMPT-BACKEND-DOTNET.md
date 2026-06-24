@@ -189,6 +189,7 @@ tres columnas. El front lo consume como objeto anidado `stats: { totalLicitacion
 | DeliveryHours    | int             |                                                |
 | ValidUntil       | DateTime        | UTC                                            |
 | Comment          | string?         |                                                |
+| AttachmentUrl    | string?         | presupuesto/foto que sube el corralón          |
 | Status           | OfertaStatus    | default ACTIVE                                 |
 | IsBestPrice      | bool            | badge: es la oferta más barata (ver reglas)    |
 | IsFastDelivery   | bool            | badge: entrega ≤ 24 h                          |
