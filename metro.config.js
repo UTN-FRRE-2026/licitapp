@@ -19,8 +19,6 @@ const firebasePackages = [
   '@firebase/component',
   '@firebase/util',
   '@firebase/logger',
-  '@firebase/firestore',
-  '@firebase/storage',
   '@firebase/installations',
 ]
 

@@ -298,6 +298,15 @@ Respuestas en **camelCase**. Devolvé DTOs, no entidades.
 | GET    | `/api/notifications`            | Del usuario autenticado.   |
 | POST   | `/api/notifications/{id}/read`  | Marcar como leída.         |
 
+### Archivos (adjuntos de solicitudes y ofertas)
+| Método | Ruta           | Descripción                                                |
+|--------|----------------|------------------------------------------------------------|
+| POST   | `/api/files`   | Multipart upload del adjunto. Devuelve `{ url }`.          |
+| GET    | `/files/...`   | Servidor estático (sin auth, igual que era Firebase Storage). |
+
+Ver sección **"Almacenamiento de archivos"** más abajo para reglas, validaciones,
+configuración y estructura física en disco.
+
 ### Health
 | Método | Ruta        | Descripción                |
 |--------|-------------|----------------------------|
@@ -452,17 +461,111 @@ bolsas · unidades · barras · m² · m³ · kg · litros · metros · paquetes
 
 ---
 
+## Almacenamiento de archivos (adjuntos)
+
+Migramos desde Firebase Storage (quedó detrás del plan Blaze) a almacenamiento
+en el propio backend. El front sube los adjuntos via multipart a `/api/files`,
+el backend persiste el archivo en disco y devuelve la URL pública. Los archivos
+se sirven después como estáticos bajo `/files/...`.
+
+### Endpoint
+
+**`POST /api/files`** — requiere autenticación.
+
+**Request:** `multipart/form-data` con dos campos:
+- `file`: el binario (PDF o imagen).
+- `path`: string sugerido por el cliente, ej. `attachments/<uid>/1715000000_presupuesto.pdf`
+  o `ofertas-attachments/<uid>/1715000000_foto.jpg`.
+
+**Respuesta `200`:**
+```json
+{ "url": "https://licitapp-api.blackandred.com.ar/files/attachments/<uid>/1715000000_presupuesto.pdf" }
+```
+
+**Validaciones:**
+- El `path` debe empezar con `attachments/{uid}/` o `ofertas-attachments/{uid}/`,
+  donde `{uid}` matchea el usuario autenticado (claim `user_id`). Si no, `403`.
+- Sanitizar el nombre del archivo: solo `[A-Za-z0-9._-]`, reemplazar resto por `_`.
+- Resolver el path final con `Path.GetFullPath` y validar que **no escape** del
+  `RootPath` configurado (defensa contra path traversal con `..`).
+- Tamaño máx: **10 MB** → `413 Payload Too Large` si se excede.
+- Content-type permitido: `application/pdf` o `image/*` → `415` si no.
+- Crear directorios intermedios con `Directory.CreateDirectory()`.
+
+**Errores:**
+- `401` sin token, `403` UID no matchea, `413` muy grande, `415` content-type
+  no permitido, `400` campos faltantes, `500` falla de disco.
+
+### Configuración
+
+```json
+"FileStorage": {
+  "RootPath": "/var/lib/licitapp/files",
+  "BaseUrl": "https://licitapp-api.blackandred.com.ar/files"
+}
+```
+
+### Servir archivos estáticos
+
+En `Program.cs`:
+
+```csharp
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(builder.Configuration["FileStorage:RootPath"]!),
+    RequestPath = "/files",
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers["Cache-Control"] = "public, max-age=3600";
+    }
+});
+```
+
+Sin auth: los adjuntos son accesibles para cualquiera con la URL (mismo modelo
+que tenía Firebase Storage con `getDownloadURL`).
+
+### Límites de Kestrel / proxy
+
+```csharp
+builder.WebHost.ConfigureKestrel(o => {
+    o.Limits.MaxRequestBodySize = 11 * 1024 * 1024;
+});
+```
+
+```csharp
+[HttpPost("/api/files")]
+[RequestSizeLimit(11 * 1024 * 1024)]
+public async Task<IActionResult> UploadFile(IFormFile file, [FromForm] string path) { ... }
+```
+
+Si hay Nginx adelante: `client_max_body_size 11m;` en su config.
+
+### Docker
+
+Montar volumen para persistir al redeploy:
+
+```yaml
+services:
+  api:
+    volumes:
+      - licitapp_files:/var/lib/licitapp/files
+volumes:
+  licitapp_files:
+```
+
+---
+
 ## Fuera de alcance (mencionar, no implementar salvo que se pida)
 
-- **Tiempo real:** el front hoy usa listeners de Firestore (`onSnapshot`) para el feed y
-  el detalle. Equivalente en .NET sería **SignalR**. Dejalo como punto de extensión; en
-  esta primera versión, el front puede usar polling / refetch con React Query.
-- **Storage de adjuntos:** hoy va a Firebase Storage. Opciones futuras: endpoint
-  `POST /api/files` (multipart) hacia disco / S3 / MinIO. Por ahora el front puede seguir
-  subiendo a Firebase Storage y mandar sólo la `attachmentUrl`.
-- **Push notifications:** la generación de notificaciones (NEW_OFFER, OFFER_WON, etc.) y
-  el envío vía Expo Push se pueden modelar como un servicio posterior; por ahora basta con
-  persistir las `Notification`.
+- **Tiempo real:** el front hoy usa polling con React Query (reemplazo de los
+  `onSnapshot` de Firestore). Equivalente futuro en .NET sería **SignalR**.
+  Dejalo como punto de extensión.
+- **Push notifications:** la generación de notificaciones (NEW_OFFER, OFFER_WON, etc.)
+  y el envío vía Expo Push se pueden modelar como un servicio posterior; por ahora
+  basta con persistir las `Notification` y el front ya manda el `pushToken` del
+  usuario en `updateMyProfile`.
+- **CDN para los archivos:** servirlos directo desde Kestrel está bien para MVP.
+  Si crece el tráfico, mover a S3/MinIO o poner Cloudflare adelante.
 
 ---
 

@@ -1,31 +1,65 @@
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import * as FileSystem from 'expo-file-system/legacy';
-import { storage } from './firebase';
+import { File } from 'expo-file-system';
+import { getIdToken } from './auth.service';
 
-// Sube un archivo local (uri) a Firebase Storage y retorna la URL pública.
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+
+// Sube un archivo local (uri) al backend .NET via multipart y retorna la URL
+// pública que devuelve el servidor (Location del header o `url` en el body).
 //
-// Por qué no usamos `fetch(uri).blob()` + uploadBytes:
-// Hermes (motor JS de RN) no soporta construir Blobs desde ArrayBuffer/ArrayBufferView,
-// y ese es el camino interno que toma `Response.blob()` cuando devuelve binarios.
-// Resultado: error "Creating blobs from 'ArrayBuffer' and 'ArrayBufferView' are not supported".
-// Solución: leer el archivo a base64 con expo-file-system y subirlo con uploadString,
-// que toma el string directamente y maneja la codificación del lado del SDK.
-//
-// En la migración a .NET: reemplazar por POST multipart al endpoint /api/files.
+// Migramos desde Firebase Storage al propio backend porque Storage quedó
+// detrás del plan Blaze. El backend persiste el archivo en disco y lo sirve
+// como estático, así que la URL final apunta al mismo host de la API.
+
+interface UploadFileResponse {
+  url: string;
+}
 
 export async function uploadFile(
   uri: string,
   storagePath: string,
   mimeType: string
 ): Promise<string> {
-  const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: FileSystem.EncodingType.Base64,
+  if (!BASE_URL) {
+    throw new Error('EXPO_PUBLIC_API_URL no está configurada.');
+  }
+
+  const token = await getIdToken();
+  if (!token) {
+    throw new Error('No hay sesión activa.');
+  }
+
+  // expo-file-system v56: la API nueva File maneja correctamente los URIs
+  // del DocumentPicker en Expo Go (Android scoped storage) y en builds nativos.
+  const file = new File(uri);
+  const fileName = storagePath.split('/').pop() ?? file.name;
+
+  const formData = new FormData();
+  // En RN, FormData acepta { uri, name, type } para archivos locales.
+  // El cast a `any` es necesario porque el tipo DOM de FormData no contempla
+  // esta shape RN-específica.
+  formData.append('file', {
+    uri,
+    name: fileName,
+    type: mimeType,
+  } as unknown as Blob);
+  formData.append('path', storagePath);
+
+  const res = await fetch(`${BASE_URL}/api/files`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      // NO seteamos Content-Type: fetch arma el boundary del multipart solo.
+    },
+    body: formData,
   });
 
-  const storageRef = ref(storage, storagePath);
-  await uploadString(storageRef, base64, 'base64', { contentType: mimeType });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(text || `Upload falló (${res.status}).`);
+  }
 
-  return getDownloadURL(storageRef);
+  const body = (await res.json()) as UploadFileResponse;
+  return body.url;
 }
 
 // Genera un path único para un adjunto de solicitud
