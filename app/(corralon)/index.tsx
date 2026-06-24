@@ -9,16 +9,22 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../constants/colors';
 import { FeedCard } from '../../components/FeedCard';
 import { useAuthStore } from '../../stores/authStore';
 import { useMyOfertasStats } from '../../hooks/useOfertas';
+import { useUnreadCount } from '../../hooks/useNotifications';
 import { listenToFeedByZone } from '../../services/solicitudes.service';
 import type { Solicitud } from '../../types';
 
 export default function HomeCorralónScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const { pendientes, ganadas, perdidas } = useMyOfertasStats();
+  const unread = useUnreadCount();
 
   const [feed, setFeed] = useState<Solicitud[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,14 +48,22 @@ export default function HomeCorralónScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View>
           <Text style={styles.greeting}>Hola, {businessName.split(' ')[0]} 👋</Text>
           <Text style={styles.zone}>📍 {(user?.zone ?? '').split(',')[0]}</Text>
         </View>
-        <View style={styles.notifBtn}>
+        <TouchableOpacity
+          style={styles.notifBtn}
+          onPress={() => router.push('/(corralon)/notificaciones')}
+        >
           <Text style={styles.notifIcon}>🔔</Text>
-        </View>
+          {unread > 0 && (
+            <View style={styles.notifBadge}>
+              <Text style={styles.notifBadgeText}>{unread > 9 ? '9+' : unread}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       <View style={styles.statsRow}>
@@ -114,7 +128,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 56,
     paddingBottom: 16,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
@@ -129,8 +142,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gray[100],
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
   notifIcon: { fontSize: 18 },
+  notifBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.danger,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
+  notifBadgeText: { fontSize: 10, color: colors.white, fontWeight: '700', lineHeight: 11 },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',

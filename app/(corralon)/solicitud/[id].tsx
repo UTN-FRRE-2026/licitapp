@@ -10,6 +10,7 @@ import {
   Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { colors } from '../../../constants/colors';
@@ -22,6 +23,7 @@ import { useAuthStore } from '../../../stores/authStore';
 import type { Solicitud } from '../../../types';
 
 export default function VerSolicitudScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const user = useAuthStore((s) => s.user);
@@ -89,7 +91,7 @@ export default function VerSolicitudScreen() {
   return (
     <View style={styles.container}>
       {/* Nav */}
-      <View style={styles.nav}>
+      <View style={[styles.nav, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
@@ -219,7 +221,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 56,
     paddingBottom: 12,
     backgroundColor: colors.white,
     borderBottomWidth: 1,

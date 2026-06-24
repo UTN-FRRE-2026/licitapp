@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore } from '../stores/authStore';
 import { onAuthStateChange, getMyProfile } from '../services/auth.service';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,6 +19,8 @@ function AuthGuard() {
   const router = useRouter();
   const segments = useSegments();
   const { user, loading, setUser, setLoading, clear } = useAuthStore();
+
+  usePushNotifications();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChange(async (firebaseUser) => {
@@ -64,8 +68,10 @@ function AuthGuard() {
 
 export default function RootLayout() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthGuard />
-    </QueryClientProvider>
+    <SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthGuard />
+      </QueryClientProvider>
+    </SafeAreaProvider>
   );
 }

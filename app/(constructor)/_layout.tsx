@@ -1,22 +1,55 @@
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../constants/colors';
+import { useUnreadCount } from '../../hooks/useNotifications';
 
-function TabIcon({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) {
+function TabIcon({
+  emoji,
+  label,
+  focused,
+  badgeCount,
+}: {
+  emoji: string;
+  label: string;
+  focused: boolean;
+  badgeCount?: number;
+}) {
   return (
     <View style={styles.tabItem}>
-      <Text style={[styles.tabEmoji, focused && styles.tabEmojiActive]}>{emoji}</Text>
-      <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{label}</Text>
+      <View style={styles.emojiWrap}>
+        <Text style={[styles.tabEmoji, focused && styles.tabEmojiActive]}>{emoji}</Text>
+        {badgeCount !== undefined && badgeCount > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{badgeCount > 9 ? '9+' : badgeCount}</Text>
+          </View>
+        )}
+      </View>
+      <Text
+        style={[styles.tabLabel, focused && styles.tabLabelActive]}
+        numberOfLines={1}
+        ellipsizeMode="clip"
+      >
+        {label}
+      </Text>
     </View>
   );
 }
 
 export default function ConstructorLayout() {
+  const insets = useSafeAreaInsets();
+  const unread = useUnreadCount();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            height: 64 + insets.bottom,
+            paddingBottom: 8 + insets.bottom,
+          },
+        ],
         tabBarShowLabel: false,
       }}
     >
@@ -33,7 +66,7 @@ export default function ConstructorLayout() {
         name="notificaciones"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="🔔" label="Alertas" focused={focused} />
+            <TabIcon emoji="🔔" label="Alertas" focused={focused} badgeCount={unread} />
           ),
         }}
       />
@@ -47,11 +80,13 @@ export default function ConstructorLayout() {
       />
 
       {/* Pantallas de stack (sin tab) */}
-      <Tabs.Screen name="nueva-solicitud"    options={{ href: null }} />
+      <Tabs.Screen name="nueva-solicitud"     options={{ href: null }} />
       <Tabs.Screen name="solicitud-publicada" options={{ href: null }} />
       <Tabs.Screen name="oferta-aceptada"     options={{ href: null }} />
-      <Tabs.Screen name="comparar"            options={{ href: null }} />
-      <Tabs.Screen name="oferta"              options={{ href: null }} />
+      <Tabs.Screen name="comparar/[id]"       options={{ href: null }} />
+      <Tabs.Screen name="oferta/[id]"         options={{ href: null }} />
+      <Tabs.Screen name="editar-perfil"       options={{ href: null }} />
+      <Tabs.Screen name="mis-cierres"         options={{ href: null }} />
     </Tabs>
   );
 }
@@ -61,13 +96,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.gray[100],
-    height: 80,
-    paddingBottom: 12,
     paddingTop: 8,
   },
-  tabItem: { alignItems: 'center', gap: 2 },
-  tabEmoji: { fontSize: 22, opacity: 0.4 },
+  tabItem: { alignItems: 'center', justifyContent: 'center', gap: 2, width: '100%' },
+  emojiWrap: { position: 'relative' },
+  tabEmoji: { fontSize: 22, opacity: 0.4, lineHeight: 26 },
   tabEmojiActive: { opacity: 1 },
-  tabLabel: { fontSize: 10, color: colors.gray[400], fontWeight: '500' },
+  tabLabel: { fontSize: 10, color: colors.gray[400], fontWeight: '500', lineHeight: 12 },
   tabLabelActive: { color: colors.brand[600] },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -10,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.danger,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { fontSize: 9, color: colors.white, fontWeight: '700', lineHeight: 11 },
 });

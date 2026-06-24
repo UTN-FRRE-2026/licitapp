@@ -5,10 +5,10 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,9 +16,9 @@ import { z } from 'zod';
 import { colors } from '../../constants/colors';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { ZoneSelector } from '../../components/ui/ZoneSelector';
 import { register as registerUser } from '../../services/auth.service';
 import { useAuthStore } from '../../stores/authStore';
-import { ZONES } from '../../constants/zones';
 import type { UserRole } from '../../types';
 
 const schema = z.object({
@@ -165,28 +165,16 @@ export default function RegistroScreen() {
           )}
         />
 
-        {/* Zona — selector simple (en sprint 2 se mejora con modal) */}
         <Controller
           control={control}
           name="zone"
           render={({ field: { onChange, value } }) => (
-            <View style={styles.zoneContainer}>
-              <Text style={styles.fieldLabel}>Zona{isCorralon ? ' de cobertura' : ' de trabajo'}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.zoneScroll}>
-                {ZONES.slice(0, 5).map((z) => (
-                  <TouchableOpacity
-                    key={z}
-                    onPress={() => onChange(z)}
-                    style={[styles.zoneChip, value === z && styles.zoneChipSelected]}
-                  >
-                    <Text style={[styles.zoneText, value === z && styles.zoneTextSelected]}>
-                      {z.split(',')[0]}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              {errors.zone && <Text style={styles.errorText}>{errors.zone.message}</Text>}
-            </View>
+            <ZoneSelector
+              label={`Zona${isCorralon ? ' de cobertura' : ' de trabajo'}`}
+              value={value ?? ''}
+              onChange={onChange}
+              error={errors.zone?.message}
+            />
           )}
         />
 
@@ -244,25 +232,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: '700', color: colors.gray[900], marginBottom: 4, letterSpacing: -0.5 },
   subtitle: { fontSize: 14, color: colors.gray[500], marginBottom: 24 },
   eyeIcon: { fontSize: 18 },
-  fieldLabel: { fontSize: 13, fontWeight: '500', color: colors.gray[700], marginBottom: 8 },
-  zoneContainer: { marginBottom: 14 },
-  zoneScroll: { flexDirection: 'row' },
-  zoneChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: colors.gray[200],
-    marginRight: 8,
-    backgroundColor: colors.white,
-  },
-  zoneChipSelected: {
-    borderColor: colors.brand[500],
-    backgroundColor: colors.brand[50],
-  },
-  zoneText: { fontSize: 13, color: colors.gray[600], fontWeight: '500' },
-  zoneTextSelected: { color: colors.brand[700], fontWeight: '600' },
-  errorText: { fontSize: 12, color: colors.danger, marginTop: 4 },
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',

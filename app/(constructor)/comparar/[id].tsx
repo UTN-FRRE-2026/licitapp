@@ -9,6 +9,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../../constants/colors';
 import { Card } from '../../../components/ui/Card';
 import { Pill } from '../../../components/ui/Pill';
@@ -24,6 +25,7 @@ function totalConEnvio(o: Oferta): number {
 }
 
 export default function CompararOfertasScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -63,7 +65,7 @@ export default function CompararOfertasScreen() {
   return (
     <View style={styles.container}>
       {/* Nav */}
-      <View style={styles.nav}>
+      <View style={[styles.nav, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
@@ -203,7 +205,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 56,
     paddingBottom: 12,
     backgroundColor: colors.white,
     borderBottomWidth: 1,

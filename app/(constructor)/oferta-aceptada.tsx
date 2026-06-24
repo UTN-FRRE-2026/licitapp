@@ -10,6 +10,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../constants/colors';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -17,6 +18,7 @@ import { getUserProfile } from '../../services/auth.service';
 import type { UserContactDto } from '../../types';
 
 export default function OfertaAceptadaScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{
     corralonId:     string;
@@ -42,7 +44,7 @@ export default function OfertaAceptadaScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero */}
-        <View style={styles.hero}>
+        <View style={[styles.hero, { paddingTop: insets.top + 24 }]}>
           <View style={styles.heroCircle}>
             <Text style={styles.heroIcon}>✓</Text>
           </View>

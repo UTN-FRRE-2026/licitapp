@@ -8,6 +8,7 @@ import {
   StyleSheet,
   RefreshControl,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../constants/colors';
 import { OfertaCard } from '../../components/OfertaCard';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
@@ -21,6 +22,7 @@ const WON_STATUSES: OfertaStatus[]    = ['WON'];
 const LOST_STATUSES: OfertaStatus[]   = ['LOST', 'EXPIRED', 'WITHDRAWN'];
 
 export default function MisOfertasScreen() {
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>('pendientes');
   const { data: ofertas = [], isLoading, refetch, isFetching } = useMyOfertas();
   const { pendientes, ganadas, perdidas } = useMyOfertasStats();
@@ -60,7 +62,7 @@ export default function MisOfertasScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.headerTitle}>Mis ofertas</Text>
       </View>
 
@@ -106,7 +108,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.gray[50] },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 56,
     paddingBottom: 14,
     backgroundColor: colors.white,
     borderBottomWidth: 1,

@@ -5,21 +5,23 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { colors } from '../../constants/colors';
 import { useAuthStore } from '../../stores/authStore';
 import { useMySolicitudes, useSolicitudesStats } from '../../hooks/useSolicitudes';
+import { useUnreadCount } from '../../hooks/useNotifications';
 import { SolicitudCard } from '../../components/SolicitudCard';
 import type { Solicitud } from '../../types';
 
 export default function HomeConstructorScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const unread = useUnreadCount();
 
   const { data: solicitudes = [], isLoading, refetch, isRefetching } = useMySolicitudes();
   const { activas, cerradas, totalOfertas } = useSolicitudesStats();
@@ -62,6 +64,11 @@ export default function HomeConstructorScreen() {
                 onPress={() => router.push('/(constructor)/notificaciones')}
               >
                 <Text style={styles.notifIcon}>🔔</Text>
+                {unread > 0 && (
+                  <View style={styles.notifBadge}>
+                    <Text style={styles.notifBadgeText}>{unread > 9 ? '9+' : unread}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
 
@@ -172,8 +179,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gray[100],
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
   notifIcon: { fontSize: 18 },
+  notifBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.danger,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
+  notifBadgeText: { fontSize: 10, color: colors.white, fontWeight: '700', lineHeight: 11 },
 
   // Banner
   banner: {

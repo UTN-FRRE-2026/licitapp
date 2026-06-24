@@ -10,6 +10,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { colors } from '../../../constants/colors';
@@ -21,6 +22,7 @@ import { getSolicitudById } from '../../../services/solicitudes.service';
 import type { Solicitud } from '../../../types';
 
 export default function DetalleOfertaScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string; solicitudId: string }>();
   const ofertaId   = params.id         ?? '';
@@ -105,7 +107,7 @@ export default function DetalleOfertaScreen() {
   return (
     <View style={styles.container}>
       {/* Nav */}
-      <View style={styles.nav}>
+      <View style={[styles.nav, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
@@ -212,7 +214,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 56,
     paddingBottom: 12,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
