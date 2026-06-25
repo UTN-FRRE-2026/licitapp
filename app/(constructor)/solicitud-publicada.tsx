@@ -29,7 +29,10 @@ export default function SolicitudPublicadaScreen() {
   }, [solicitudId]);
 
   const timeLeft = solicitud?.deadline
-    ? formatDistanceToNow(solicitud.deadline, { locale: es, addSuffix: false })
+    ? formatDistanceToNow(solicitud.deadline, { locale: es, addSuffix: false }).replace(
+        /^alrededor de /,
+        ''
+      )
     : '—';
 
   return (
@@ -83,19 +86,32 @@ export default function SolicitudPublicadaScreen() {
           <Text style={styles.liveTitle}>Estado en vivo</Text>
           <View style={styles.liveGrid}>
             <View style={styles.liveItem}>
-              <Text style={styles.liveNum}>
-                {solicitud?.corralonesNotifiedCount ?? 0}
-              </Text>
+              <View style={styles.liveNumBox}>
+                <Text style={styles.liveNum}>
+                  {solicitud?.corralonesNotifiedCount ?? 0}
+                </Text>
+              </View>
               <Text style={styles.liveLabel}>Notificados</Text>
             </View>
             <View style={[styles.liveItem, styles.liveItemCenter]}>
-              <Text style={[styles.liveNum, styles.liveNumBrand]}>
-                {solicitud?.ofertasCount ?? 0}
-              </Text>
+              <View style={styles.liveNumBox}>
+                <Text style={[styles.liveNum, styles.liveNumBrand]}>
+                  {solicitud?.ofertasCount ?? 0}
+                </Text>
+              </View>
               <Text style={[styles.liveLabel, styles.liveLabelBrand]}>Ofertas</Text>
             </View>
             <View style={styles.liveItem}>
-              <Text style={styles.liveNum}>{timeLeft}</Text>
+              <View style={styles.liveNumBox}>
+                <Text
+                  style={[styles.liveNum, styles.liveNumTime]}
+                  numberOfLines={2}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                >
+                  {timeLeft}
+                </Text>
+              </View>
               <Text style={styles.liveLabel}>Restante</Text>
             </View>
           </View>
@@ -185,7 +201,9 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderColor: colors.gray[200],
   },
+  liveNumBox: { height: 40, justifyContent: 'center', alignItems: 'center' },
   liveNum: { fontSize: 24, fontWeight: '800', color: colors.gray[900], lineHeight: 28 },
+  liveNumTime: { fontSize: 15, lineHeight: 18, textAlign: 'center' },
   liveNumBrand: { color: colors.brand[600] },
   liveLabel: { fontSize: 11, color: colors.gray[500], marginTop: 4, fontWeight: '600' },
   liveLabelBrand: { color: colors.brand[700] },

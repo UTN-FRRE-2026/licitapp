@@ -1,5 +1,5 @@
 // Pantalla 14 — Cargar Oferta: formulario + banner de competencia
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -74,6 +74,31 @@ export default function CargarOfertaScreen() {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [validUntil, setValidUntil] = useState(solicitudDeadline);
+
+  // En Android se usa la API imperativa (la declarativa rompe con Fabric y no
+  // soporta mode="datetime"). Se pide fecha y luego hora en dos pasos.
+  const openAndroidDateTimePicker = useCallback(() => {
+    DateTimePickerAndroid.open({
+      value: validUntil,
+      mode: 'date',
+      minimumDate: new Date(),
+      maximumDate: solicitudDeadline,
+      onChange: (_event, selectedDate) => {
+        if (!selectedDate) return;
+        DateTimePickerAndroid.open({
+          value: selectedDate,
+          mode: 'time',
+          is24Hour: true,
+          onChange: (_e, selectedTime) => {
+            if (!selectedTime) return;
+            const combined = new Date(selectedDate);
+            combined.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
+            setValidUntil(combined);
+          },
+        });
+      },
+    });
+  }, [validUntil, solicitudDeadline]);
   const [attachment, setAttachment] = useState<{ uri: string; name: string; mimeType: string } | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -267,22 +292,26 @@ export default function CargarOfertaScreen() {
         <Text style={styles.sectionTitle}>Oferta válida hasta</Text>
         <TouchableOpacity
           style={styles.datePickerBtn}
-          onPress={() => setShowDatePicker(true)}
+          onPress={() =>
+            Platform.OS === 'android'
+              ? openAndroidDateTimePicker()
+              : setShowDatePicker(true)
+          }
         >
           <Text style={styles.datePickerIcon}>📅</Text>
           <Text style={styles.datePickerText}>
             {format(validUntil, "d 'de' MMMM, HH:mm", { locale: es })}
           </Text>
         </TouchableOpacity>
-        {showDatePicker && (
+        {/* DateTimePicker — solo iOS (Android usa la API imperativa) */}
+        {showDatePicker && Platform.OS === 'ios' && (
           <DateTimePicker
             value={validUntil}
             mode="datetime"
-            display="default"
+            display="inline"
             minimumDate={new Date()}
             maximumDate={solicitudDeadline}
             onChange={(_e, date) => {
-              setShowDatePicker(false);
               if (date) setValidUntil(date);
             }}
           />

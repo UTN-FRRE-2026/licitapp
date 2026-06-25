@@ -17,7 +17,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 import { format, addHours } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -60,6 +60,30 @@ export default function NuevaSolicitudScreen() {
 
   const [deadline, setDeadline] = useState<Date>(addHours(new Date(), 8));
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // En Android se usa la API imperativa (la declarativa rompe con Fabric y no
+  // soporta mode="datetime"). Se pide fecha y luego hora en dos pasos.
+  const openAndroidDateTimePicker = useCallback(() => {
+    DateTimePickerAndroid.open({
+      value: deadline,
+      mode: 'date',
+      minimumDate: new Date(),
+      onChange: (_event, selectedDate) => {
+        if (!selectedDate) return;
+        DateTimePickerAndroid.open({
+          value: selectedDate,
+          mode: 'time',
+          is24Hour: true,
+          onChange: (_e, selectedTime) => {
+            if (!selectedTime) return;
+            const combined = new Date(selectedDate);
+            combined.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
+            setDeadline(combined);
+          },
+        });
+      },
+    });
+  }, [deadline]);
   const [showZonePicker, setShowZonePicker] = useState(false);
   const [attachment, setAttachment] = useState<{ uri: string; name: string; mimeType: string } | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -280,7 +304,11 @@ export default function NuevaSolicitudScreen() {
           <Text style={styles.fieldLabel}>Fecha límite para ofertas</Text>
           <TouchableOpacity
             style={styles.selectField}
-            onPress={() => setShowDatePicker(true)}
+            onPress={() =>
+              Platform.OS === 'android'
+                ? openAndroidDateTimePicker()
+                : setShowDatePicker(true)
+            }
           >
             <Text style={styles.selectText}>
               📅 {format(deadline, "dd/MM/yyyy 'a las' HH:mm", { locale: es })}
@@ -289,15 +317,14 @@ export default function NuevaSolicitudScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* DateTimePicker */}
-        {showDatePicker && (
+        {/* DateTimePicker — solo iOS (Android usa la API imperativa) */}
+        {showDatePicker && Platform.OS === 'ios' && (
           <DateTimePicker
             value={deadline}
             mode="datetime"
             minimumDate={new Date()}
-            display={Platform.OS === 'ios' ? 'inline' : 'default'}
+            display="inline"
             onChange={(_event, selected) => {
-              setShowDatePicker(Platform.OS === 'ios');
               if (selected) setDeadline(selected);
             }}
           />
