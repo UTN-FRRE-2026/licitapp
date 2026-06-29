@@ -115,15 +115,32 @@ export function OfertaCard({ oferta }: OfertaCardProps) {
           <View />
         )}
         {oferta.status === 'ACTIVE' && (
-          <TouchableOpacity
-            style={styles.retirarBtn}
-            onPress={handleRetirar}
-            disabled={isPending}
-          >
-            <Text style={styles.retirarText}>
-              {isPending ? 'Retirando...' : 'Retirar'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.actions}>
+            <TouchableOpacity
+              style={styles.editarBtn}
+              onPress={() =>
+                router.push({
+                  pathname: '/(corralon)/editar-oferta/[id]',
+                  params: {
+                    id: oferta.id,
+                    solicitudId: oferta.solicitudId,
+                    solicitudTitle: oferta.solicitudTitle ?? '',
+                  },
+                })
+              }
+            >
+              <Text style={styles.editarText}>Editar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.retirarBtn}
+              onPress={handleRetirar}
+              disabled={isPending}
+            >
+              <Text style={styles.retirarText}>
+                {isPending ? 'Retirando...' : 'Retirar'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     </Card>
@@ -169,6 +186,15 @@ const styles = StyleSheet.create({
   },
   timeLeft: { fontSize: 12, color: colors.gray[500] },
   timeExpired: { color: colors.danger },
+  actions: { flexDirection: 'row', gap: 8 },
+  editarBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: colors.gray[200],
+  },
+  editarText: { fontSize: 12, fontWeight: '600', color: colors.gray[700] },
   retirarBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,

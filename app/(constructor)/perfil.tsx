@@ -41,6 +41,13 @@ export default function PerfilConstructorScreen() {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.headerTitle}>Mi perfil</Text>
+        <TouchableOpacity
+          onPress={() => router.push('/(constructor)/configuracion')}
+          style={styles.gearBtn}
+          hitSlop={8}
+        >
+          <Text style={styles.gearIcon}>⚙️</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -85,12 +92,31 @@ export default function PerfilConstructorScreen() {
           <DataRow icon="📍" label="Zona" value={user?.zone ?? '—'} last />
         </Card>
 
+        {/* Mi actividad (estadísticas) */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push('/(constructor)/resumen')}
+        >
+          <Card style={styles.linkCardTight}>
+            <View style={styles.linkRow}>
+              <View style={styles.linkLeft}>
+                <Text style={styles.linkIcon}>📊</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.linkTitle}>Mi actividad</Text>
+                  <Text style={styles.linkSub}>Estadísticas de tus licitaciones</Text>
+                </View>
+              </View>
+              <Text style={styles.chev}>›</Text>
+            </View>
+          </Card>
+        </TouchableOpacity>
+
         {/* Historial */}
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => router.push('/(constructor)/mis-cierres')}
         >
-          <Card style={styles.linkCard}>
+          <Card style={styles.linkCardTight}>
             <View style={styles.linkRow}>
               <View style={styles.linkLeft}>
                 <Text style={styles.linkIcon}>🏆</Text>
@@ -101,6 +127,25 @@ export default function PerfilConstructorScreen() {
                       ? 'Tus licitaciones cerradas aparecerán acá'
                       : `${cerradas} licitación${cerradas === 1 ? '' : 'es'} cerrada${cerradas === 1 ? '' : 's'}`}
                   </Text>
+                </View>
+              </View>
+              <Text style={styles.chev}>›</Text>
+            </View>
+          </Card>
+        </TouchableOpacity>
+
+        {/* Ayuda */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push('/(constructor)/ayuda')}
+        >
+          <Card style={styles.linkCard}>
+            <View style={styles.linkRow}>
+              <View style={styles.linkLeft}>
+                <Text style={styles.linkIcon}>❓</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.linkTitle}>Centro de ayuda</Text>
+                  <Text style={styles.linkSub}>Preguntas frecuentes y soporte</Text>
                 </View>
               </View>
               <Text style={styles.chev}>›</Text>
@@ -151,6 +196,9 @@ function DataRow({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.gray[50] },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingBottom: 14,
     backgroundColor: colors.white,
@@ -158,6 +206,15 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.gray[100],
   },
   headerTitle: { fontSize: 22, fontWeight: '800', color: colors.gray[900] },
+  gearBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.gray[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gearIcon: { fontSize: 18 },
   scroll: { padding: 16, paddingBottom: 40 },
 
   identityBlock: { alignItems: 'center', paddingVertical: 20, marginBottom: 16 },
@@ -216,6 +273,7 @@ const styles = StyleSheet.create({
   dataValue: { fontSize: 14, color: colors.gray[800], fontWeight: '600' },
 
   linkCard: { marginBottom: 24 },
+  linkCardTight: { marginBottom: 10 },
   linkRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   linkLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   linkIcon: { fontSize: 24 },

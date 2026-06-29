@@ -42,6 +42,13 @@ export default function PerfilCorralonScreen() {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.headerTitle}>Mi perfil</Text>
+        <TouchableOpacity
+          onPress={() => router.push('/(corralon)/configuracion')}
+          style={styles.gearBtn}
+          hitSlop={8}
+        >
+          <Text style={styles.gearIcon}>⚙️</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -89,12 +96,54 @@ export default function PerfilCorralonScreen() {
           <DataRow icon="📍" label="Zona de cobertura" value={user?.zone ?? '—'} last />
         </Card>
 
+        {/* Mis ventas */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push('/(corralon)/mis-ventas')}
+        >
+          <Card style={styles.linkCardTight}>
+            <View style={styles.linkRow}>
+              <View style={styles.linkLeft}>
+                <Text style={styles.linkIcon}>🏆</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.linkTitle}>Mis ventas</Text>
+                  <Text style={styles.linkSub}>
+                    {ganadas === 0
+                      ? 'Tus ventas cerradas aparecerán acá'
+                      : `${ganadas} venta${ganadas === 1 ? '' : 's'} cerrada${ganadas === 1 ? '' : 's'}`}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.chev}>›</Text>
+            </View>
+          </Card>
+        </TouchableOpacity>
+
+        {/* Estadísticas */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push('/(corralon)/estadisticas')}
+        >
+          <Card style={styles.linkCardTight}>
+            <View style={styles.linkRow}>
+              <View style={styles.linkLeft}>
+                <Text style={styles.linkIcon}>📊</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.linkTitle}>Mis estadísticas</Text>
+                  <Text style={styles.linkSub}>Rendimiento y tasa de éxito</Text>
+                </View>
+              </View>
+              <Text style={styles.chev}>›</Text>
+            </View>
+          </Card>
+        </TouchableOpacity>
+
         {/* Historial → tab Mis ofertas */}
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => router.push('/(corralon)/mis-ofertas')}
         >
-          <Card style={styles.linkCard}>
+          <Card style={styles.linkCardTight}>
             <View style={styles.linkRow}>
               <View style={styles.linkLeft}>
                 <Text style={styles.linkIcon}>📦</Text>
@@ -105,6 +154,25 @@ export default function PerfilCorralonScreen() {
                       ? 'Tus ofertas cerradas aparecerán acá'
                       : `${ganadas} ganada${ganadas === 1 ? '' : 's'} · ${perdidas} cerrada${perdidas === 1 ? '' : 's'}`}
                   </Text>
+                </View>
+              </View>
+              <Text style={styles.chev}>›</Text>
+            </View>
+          </Card>
+        </TouchableOpacity>
+
+        {/* Ayuda */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push('/(corralon)/ayuda')}
+        >
+          <Card style={styles.linkCard}>
+            <View style={styles.linkRow}>
+              <View style={styles.linkLeft}>
+                <Text style={styles.linkIcon}>❓</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.linkTitle}>Centro de ayuda</Text>
+                  <Text style={styles.linkSub}>Preguntas frecuentes y soporte</Text>
                 </View>
               </View>
               <Text style={styles.chev}>›</Text>
@@ -155,6 +223,9 @@ function DataRow({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.gray[50] },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingBottom: 14,
     backgroundColor: colors.white,
@@ -162,6 +233,15 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.gray[100],
   },
   headerTitle: { fontSize: 22, fontWeight: '800', color: colors.gray[900] },
+  gearBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.gray[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gearIcon: { fontSize: 18 },
   scroll: { padding: 16, paddingBottom: 40 },
 
   identityBlock: { alignItems: 'center', paddingVertical: 20, marginBottom: 16 },
@@ -221,6 +301,7 @@ const styles = StyleSheet.create({
   dataValue: { fontSize: 14, color: colors.gray[800], fontWeight: '600' },
 
   linkCard: { marginBottom: 24 },
+  linkCardTight: { marginBottom: 10 },
   linkRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   linkLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   linkIcon: { fontSize: 24 },

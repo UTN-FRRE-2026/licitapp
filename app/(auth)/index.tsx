@@ -1,5 +1,5 @@
 // Pantalla 01 — Splash / Bienvenida
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../../constants/colors';
 import { Button } from '../../components/ui/Button';
+import { ONBOARDING_SEEN_KEY } from '../../constants/storage';
 
 export default function SplashScreen() {
   const router = useRouter();
+
+  // En el primer arranque (onboarding no visto) mostramos el tutorial.
+  useEffect(() => {
+    AsyncStorage.getItem(ONBOARDING_SEEN_KEY).then((seen) => {
+      if (!seen) router.replace('/(auth)/onboarding');
+    });
+  }, []);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -64,6 +73,13 @@ export default function SplashScreen() {
               ¿Sos corralón?{' '}
               <Text style={styles.providerTextBold}>Registrate como proveedor</Text>
             </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push('/(auth)/onboarding')}
+            style={styles.howItWorks}
+          >
+            <Text style={styles.howItWorksText}>¿Cómo funciona? Ver tutorial</Text>
           </TouchableOpacity>
         </View>
 
@@ -168,4 +184,6 @@ const styles = StyleSheet.create({
     color: colors.brand[600],
     fontWeight: '600',
   },
+  howItWorks: { alignItems: 'center', paddingVertical: 4 },
+  howItWorksText: { fontSize: 13, color: colors.gray[400], fontWeight: '500' },
 });

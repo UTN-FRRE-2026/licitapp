@@ -87,6 +87,11 @@ export default function ConstructorLayout() {
       <Tabs.Screen name="oferta/[id]"         options={{ href: null }} />
       <Tabs.Screen name="editar-perfil"       options={{ href: null }} />
       <Tabs.Screen name="mis-cierres"         options={{ href: null }} />
+      <Tabs.Screen name="licitacion/[id]"     options={{ href: null }} />
+      <Tabs.Screen name="corralon/[uid]"      options={{ href: null }} />
+      <Tabs.Screen name="resumen"             options={{ href: null }} />
+      <Tabs.Screen name="configuracion"       options={{ href: null }} />
+      <Tabs.Screen name="ayuda"               options={{ href: null }} />
     </Tabs>
   );
 }

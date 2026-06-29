@@ -110,6 +110,13 @@ export default function LoginScreen() {
           )}
         />
 
+        <TouchableOpacity
+          onPress={() => router.push('/(auth)/recuperar')}
+          style={styles.forgotLink}
+        >
+          <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+        </TouchableOpacity>
+
         <Button
           label="Iniciar sesión"
           onPress={handleSubmit(onSubmit)}
@@ -144,6 +151,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: '700', color: colors.gray[900], marginBottom: 4, letterSpacing: -0.5 },
   subtitle: { fontSize: 14, color: colors.gray[500], marginBottom: 28 },
   eyeIcon: { fontSize: 18 },
+  forgotLink: { alignSelf: 'flex-end', paddingVertical: 4, marginBottom: 8 },
+  forgotText: { fontSize: 13, color: colors.brand[600], fontWeight: '600' },
   submitBtn: { marginTop: 8 },
   registerLink: { paddingVertical: 16, alignItems: 'center' },
   registerText: { fontSize: 13, color: colors.gray[500] },

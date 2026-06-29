@@ -5,10 +5,11 @@ import {
   createOferta,
   acceptOffer,
   getCompetenciaResumen,
+  updateOferta,
   withdrawOferta,
 } from '../services/ofertas.service';
 import { useAuthStore } from '../stores/authStore';
-import type { NuevaOfertaFormData, Oferta } from '../types';
+import type { NuevaOfertaFormData, Oferta, ShippingType } from '../types';
 
 // ─── Mis ofertas (corralón) ───────────────────────────────────────────────────
 
@@ -103,6 +104,27 @@ export function useAcceptOffer() {
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['solicitudes', 'mias', user?.uid] });
       queryClient.invalidateQueries({ queryKey: ['ofertas', vars.solicitudId] });
+    },
+  });
+}
+
+// ─── Editar oferta (sólo mientras la solicitud está OPEN) ─────────────────────
+
+export function useUpdateOferta(solicitudId: string, ofertaId: string) {
+  const queryClient = useQueryClient();
+  const uid = useAuthStore((s) => s.user?.uid);
+
+  return useMutation({
+    mutationFn: (data: Partial<{
+      totalPrice: number;
+      shippingType: ShippingType;
+      shippingPrice: number;
+      deliveryHours: number;
+      comment: string;
+    }>) => updateOferta(solicitudId, ofertaId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ofertas', 'mias', uid] });
+      queryClient.invalidateQueries({ queryKey: ['oferta', solicitudId, ofertaId] });
     },
   });
 }

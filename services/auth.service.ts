@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut,
   onAuthStateChanged,
   User as FirebaseUser,
@@ -118,6 +119,18 @@ export async function login(email: string, password: string): Promise<UserProfil
 
 export async function logout(): Promise<void> {
   await signOut(auth);
+}
+
+// ─── Recuperar contraseña ──────────────────────────────────────────────────────
+// Firebase envía el correo de reseteo. No revela si el email existe o no (por
+// privacidad), así que la pantalla muestra siempre un mensaje de "revisá tu casilla".
+
+export async function sendPasswordReset(email: string): Promise<void> {
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch (err) {
+    throw toFriendlyAuthError(err);
+  }
 }
 
 // ─── Perfil del usuario autenticado ────────────────────────────────────────────

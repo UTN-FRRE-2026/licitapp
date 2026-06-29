@@ -86,10 +86,16 @@ export default function CorralónLayout() {
         }}
       />
       {/* Pantallas sin tab */}
-      <Tabs.Screen name="cargar-oferta"  options={{ href: null }} />
-      <Tabs.Screen name="venta-cerrada"  options={{ href: null }} />
-      <Tabs.Screen name="solicitud/[id]" options={{ href: null }} />
-      <Tabs.Screen name="editar-perfil"  options={{ href: null }} />
+      <Tabs.Screen name="cargar-oferta"     options={{ href: null }} />
+      <Tabs.Screen name="venta-cerrada"     options={{ href: null }} />
+      <Tabs.Screen name="solicitud/[id]"    options={{ href: null }} />
+      <Tabs.Screen name="editar-perfil"     options={{ href: null }} />
+      <Tabs.Screen name="editar-oferta/[id]" options={{ href: null }} />
+      <Tabs.Screen name="constructor/[uid]" options={{ href: null }} />
+      <Tabs.Screen name="mis-ventas"        options={{ href: null }} />
+      <Tabs.Screen name="estadisticas"      options={{ href: null }} />
+      <Tabs.Screen name="configuracion"     options={{ href: null }} />
+      <Tabs.Screen name="ayuda"             options={{ href: null }} />
     </Tabs>
   );
 }

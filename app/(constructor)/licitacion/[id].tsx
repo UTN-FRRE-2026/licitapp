@@ -1,5 +1,6 @@
-// Pantalla 13 — Ver Solicitud (corralón): materiales, condiciones, "Presentar oferta"
-import React, { useState, useEffect } from 'react';
+// Pantalla — Detalle de mi licitación (constructor): vista de sólo lectura del
+// pedido propio, con materiales, condiciones y acceso a comparar ofertas.
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +9,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,43 +20,39 @@ import { Card } from '../../../components/ui/Card';
 import { Pill } from '../../../components/ui/Pill';
 import { Button } from '../../../components/ui/Button';
 import { getSolicitudById } from '../../../services/solicitudes.service';
-import { getMyOfertas } from '../../../services/ofertas.service';
-import { useAuthStore } from '../../../stores/authStore';
 import type { Solicitud } from '../../../types';
 
-export default function VerSolicitudScreen() {
+const STATUS_META = {
+  OPEN: { label: 'Abierta', variant: 'success' as const },
+  CLOSED: { label: 'Cerrada', variant: 'gray' as const },
+  CANCELLED: { label: 'Cancelada', variant: 'danger' as const },
+  EXPIRED: { label: 'Expirada', variant: 'warning' as const },
+};
+
+export default function DetalleLicitacionScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const user = useAuthStore((s) => s.user);
 
   const [solicitud, setSolicitud] = useState<Solicitud | null>(null);
   const [loading, setLoading] = useState(true);
-  const [yaOferto, setYaOferto] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = async () => {
+    if (!id) return;
+    try {
+      setSolicitud(await getSolicitudById(id));
+    } catch {
+      setSolicitud(null);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    if (!id || !user?.uid) return;
-
-    const fetchData = async () => {
-      try {
-        const [sol, misOfertas] = await Promise.all([
-          getSolicitudById(id),
-          getMyOfertas(user.uid),
-        ]);
-        setSolicitud(sol);
-        const yaExiste = misOfertas.some(
-          (o) => o.solicitudId === id && o.status === 'ACTIVE'
-        );
-        setYaOferto(yaExiste);
-      } catch {
-        setSolicitud(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [id, user?.uid]);
+    load();
+  }, [id]);
 
   if (loading) {
     return (
@@ -67,7 +65,7 @@ export default function VerSolicitudScreen() {
   if (!solicitud) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.errorText}>No se pudo cargar la solicitud.</Text>
+        <Text style={styles.errorText}>No se pudo cargar la licitación.</Text>
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.backLink}>← Volver</Text>
         </TouchableOpacity>
@@ -75,73 +73,73 @@ export default function VerSolicitudScreen() {
     );
   }
 
+  const status = STATUS_META[solicitud.status];
   const isOpen = solicitud.status === 'OPEN';
-
-  const handlePresentarOferta = () => {
-    router.push({
-      pathname: '/(corralon)/cargar-oferta',
-      params: {
-        solicitudId: id,
-        solicitudTitle: solicitud.title,
-        solicitudDeadline: solicitud.deadline.toISOString(),
-      },
-    });
-  };
+  const isClosed = solicitud.status === 'CLOSED';
+  const hasOfertas = solicitud.ofertasCount > 0;
 
   return (
     <View style={styles.container}>
-      {/* Nav */}
       <View style={[styles.nav, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.navTitle}>Detalle del pedido</Text>
+        <Text style={styles.navTitle}>Mi licitación</Text>
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              load();
+            }}
+            tintColor={colors.brand[500]}
+          />
+        }
+      >
         {/* Encabezado */}
         <Card style={styles.headerCard}>
           <View style={styles.titleRow}>
             <Text style={styles.title}>{solicitud.title}</Text>
-            <Pill
-              label={
-                solicitud.status === 'OPEN' ? 'Abierta' :
-                solicitud.status === 'CLOSED' ? 'Cerrada' : 'Expirada'
-              }
-              variant={solicitud.status === 'OPEN' ? 'success' : 'gray'}
-            />
+            <Pill label={status.label} variant={status.variant} />
           </View>
-
           <View style={styles.metaGrid}>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() =>
-                router.push({
-                  pathname: '/(corralon)/constructor/[uid]',
-                  params: { uid: solicitud.constructorId },
-                })
-              }
-              style={styles.constructorRow}
-            >
-              <MetaItem icon="👤" label="Constructor" value={solicitud.constructorName} />
-              <Text style={styles.constructorChev}>›</Text>
-            </TouchableOpacity>
-            <MetaItem icon="📍" label="Zona" value={solicitud.deliveryZone} />
+            <MetaItem icon="📍" label="Zona de entrega" value={solicitud.deliveryZone} />
             <MetaItem
               icon="📅"
               label="Cierra"
               value={format(solicitud.deadline, "d 'de' MMMM, HH:mm", { locale: es })}
             />
             <MetaItem
-              icon="📦"
-              label="Ofertas recibidas"
-              value={String(solicitud.ofertasCount)}
+              icon="🕒"
+              label="Publicada"
+              value={format(solicitud.createdAt, "d 'de' MMMM yyyy", { locale: es })}
             />
           </View>
         </Card>
 
-        {/* Lista de materiales */}
+        {/* Resumen de actividad */}
+        <View style={styles.statsRow}>
+          <View style={[styles.statBox, styles.statBoxBrand]}>
+            <Text style={[styles.statNum, { color: colors.brand[700] }]}>
+              {solicitud.ofertasCount}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.brand[700] }]}>
+              Ofertas recibidas
+            </Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statNum}>{solicitud.corralonesNotifiedCount}</Text>
+            <Text style={styles.statLabel}>Corralones avisados</Text>
+          </View>
+        </View>
+
+        {/* Materiales */}
         <Text style={styles.sectionTitle}>Materiales solicitados</Text>
         <Card>
           {solicitud.materiales && solicitud.materiales.length > 0 ? (
@@ -164,17 +162,17 @@ export default function VerSolicitudScreen() {
           )}
         </Card>
 
-        {/* Notas / condiciones */}
+        {/* Notas */}
         {solicitud.notes ? (
           <>
-            <Text style={styles.sectionTitle}>Condiciones y notas</Text>
+            <Text style={styles.sectionTitle}>Notas</Text>
             <Card>
               <Text style={styles.notes}>{solicitud.notes}</Text>
             </Card>
           </>
         ) : null}
 
-        {/* PDF adjunto */}
+        {/* Adjunto */}
         {solicitud.attachmentUrl ? (
           <>
             <Text style={styles.sectionTitle}>Archivo adjunto</Text>
@@ -191,18 +189,24 @@ export default function VerSolicitudScreen() {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* Botón presentar oferta */}
+      {/* Footer */}
       <View style={styles.footer}>
-        {yaOferto ? (
-          <View style={styles.yaOferto}>
-            <Text style={styles.yaOfertIcon}>✓</Text>
-            <Text style={styles.yaOfertText}>Ya presentaste una oferta en esta licitación</Text>
+        {isClosed ? (
+          <View style={styles.closedBox}>
+            <Text style={styles.closedIcon}>🏆</Text>
+            <Text style={styles.closedText}>Licitación cerrada</Text>
           </View>
         ) : (
           <Button
-            label={isOpen ? 'Presentar oferta' : 'Licitación cerrada'}
-            onPress={handlePresentarOferta}
-            disabled={!isOpen}
+            label={
+              hasOfertas
+                ? `Comparar ${solicitud.ofertasCount} oferta${solicitud.ofertasCount === 1 ? '' : 's'}`
+                : 'Aún no hay ofertas'
+            }
+            onPress={() =>
+              router.push({ pathname: '/(constructor)/comparar/[id]', params: { id } })
+            }
+            disabled={!isOpen || !hasOfertas}
             variant="primary"
           />
         )}
@@ -215,7 +219,7 @@ function MetaItem({ icon, label, value }: { icon: string; label: string; value: 
   return (
     <View style={styles.metaItem}>
       <Text style={styles.metaIcon}>{icon}</Text>
-      <View>
+      <View style={{ flex: 1 }}>
         <Text style={styles.metaLabel}>{label}</Text>
         <Text style={styles.metaValue}>{value}</Text>
       </View>
@@ -242,7 +246,8 @@ const styles = StyleSheet.create({
   backBtnText: { fontSize: 22, color: colors.gray[800] },
   navTitle: { fontSize: 16, fontWeight: '700', color: colors.gray[900] },
   scroll: { padding: 16 },
-  headerCard: { marginBottom: 16 },
+
+  headerCard: { marginBottom: 12 },
   titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -250,14 +255,27 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     gap: 8,
   },
-  title: { flex: 1, fontSize: 17, fontWeight: '700', color: colors.gray[900] },
+  title: { flex: 1, fontSize: 18, fontWeight: '700', color: colors.gray[900] },
   metaGrid: { gap: 10 },
-  constructorRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  constructorChev: { fontSize: 20, color: colors.gray[300], fontWeight: '300' },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   metaIcon: { fontSize: 18, width: 24, textAlign: 'center' },
   metaLabel: { fontSize: 11, color: colors.gray[500] },
   metaValue: { fontSize: 14, fontWeight: '600', color: colors.gray[800] },
+
+  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  statBox: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.gray[100],
+  },
+  statBoxBrand: { backgroundColor: colors.brand[50], borderColor: colors.brand[100] },
+  statNum: { fontSize: 26, fontWeight: '800', color: colors.gray[900] },
+  statLabel: { fontSize: 11, color: colors.gray[500], marginTop: 4, fontWeight: '500' },
+
   sectionTitle: {
     fontSize: 13,
     fontWeight: '700',
@@ -273,10 +291,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
   },
-  materialRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[100],
-  },
+  materialRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.gray[100] },
   materialName: { fontSize: 14, color: colors.gray[800], flex: 1 },
   materialQty: {
     fontSize: 14,
@@ -312,15 +327,15 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.gray[100],
   },
-  yaOferto: {
+  closedBox: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: colors.successBg,
+    backgroundColor: colors.gray[100],
     borderRadius: 12,
     padding: 14,
   },
-  yaOfertIcon: { fontSize: 16, color: colors.success },
-  yaOfertText: { fontSize: 14, color: colors.success, fontWeight: '600' },
+  closedIcon: { fontSize: 18 },
+  closedText: { fontSize: 14, color: colors.gray[600], fontWeight: '600' },
 });

@@ -27,7 +27,11 @@ export function SolicitudCard({ solicitud }: SolicitudCardProps) {
     }
   };
 
+  const openDetalle = () =>
+    router.push({ pathname: '/(constructor)/licitacion/[id]', params: { id } });
+
   return (
+    <TouchableOpacity activeOpacity={0.7} onPress={openDetalle}>
     <Card style={styles.card}>
       <View style={styles.top}>
         <View style={styles.info}>
@@ -55,6 +59,7 @@ export function SolicitudCard({ solicitud }: SolicitudCardProps) {
         ) : null}
       </View>
     </Card>
+    </TouchableOpacity>
   );
 }
 

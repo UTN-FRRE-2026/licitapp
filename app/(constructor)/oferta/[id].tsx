@@ -119,7 +119,16 @@ export default function DetalleOfertaScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Corralón + precio */}
         <Card style={styles.heroCard}>
-          <View style={styles.heroTop}>
+          <TouchableOpacity
+            style={styles.heroTop}
+            activeOpacity={0.7}
+            onPress={() =>
+              router.push({
+                pathname: '/(constructor)/corralon/[uid]',
+                params: { uid: oferta.corralonId },
+              })
+            }
+          >
             <View style={styles.heroAvatar}>
               <Text style={styles.heroAvatarText}>
                 {oferta.corralonName.charAt(0).toUpperCase()}
@@ -132,7 +141,8 @@ export default function DetalleOfertaScreen() {
                 {oferta.isFastDelivery && <Pill label="⚡ Entrega rápida" variant="info" />}
               </View>
             </View>
-          </View>
+            <Text style={styles.heroChev}>›</Text>
+          </TouchableOpacity>
           <Text style={styles.heroPrice}>
             ${oferta.totalPrice.toLocaleString('es-AR')}
           </Text>
@@ -258,6 +268,7 @@ const styles = StyleSheet.create({
   },
   heroAvatarText: { fontSize: 20, fontWeight: '700', color: colors.brand[600] },
   heroInfo: { flex: 1 },
+  heroChev: { fontSize: 24, color: colors.gray[300], fontWeight: '300', marginLeft: 4 },
   heroName: { fontSize: 16, fontWeight: '700', color: colors.gray[900], marginBottom: 4 },
   heroBadges: { flexDirection: 'row', gap: 6 },
   heroPrice: {
