@@ -1,9 +1,20 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMySolicitudes, createSolicitud } from '../services/solicitudes.service';
+import {
+  useQuery,
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query';
+import {
+  getMySolicitudes,
+  getMySolicitudesPage,
+  createSolicitud,
+} from '../services/solicitudes.service';
 import { useAuthStore } from '../stores/authStore';
 import type { NuevaSolicitudFormData, Solicitud } from '../types';
 
-// ─── Mis licitaciones ────────────────────────────────────────────────────────
+const PAGE_SIZE = 10;
+
+// ─── Mis licitaciones (todas, para stats/agregados) ──────────────────────────
 
 export function useMySolicitudes() {
   const uid = useAuthStore((s) => s.user?.uid);
@@ -11,6 +22,22 @@ export function useMySolicitudes() {
   return useQuery<Solicitud[]>({
     queryKey: ['solicitudes', 'mias', uid],
     queryFn: () => getMySolicitudes(uid!),
+    enabled: !!uid,
+  });
+}
+
+// ─── Mis licitaciones paginadas (lista del home con "cargar más") ────────────
+// Paginado real: cada página es una llamada a la API con Skip/Take en la DB.
+
+export function useMySolicitudesPaged() {
+  const uid = useAuthStore((s) => s.user?.uid);
+
+  return useInfiniteQuery({
+    queryKey: ['solicitudes', 'mias', 'paged', uid],
+    queryFn: ({ pageParam }) => getMySolicitudesPage(pageParam, PAGE_SIZE),
+    initialPageParam: 1,
+    getNextPageParam: (last) =>
+      last.page < last.totalPages ? last.page + 1 : undefined,
     enabled: !!uid,
   });
 }
@@ -45,7 +72,8 @@ export function useCreateSolicitud() {
         payload.attachmentUrl
       ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['solicitudes', 'mias', user?.uid] });
+      // Prefijo: invalida tanto la lista completa (stats) como la paginada del home.
+      queryClient.invalidateQueries({ queryKey: ['solicitudes', 'mias'] });
     },
   });
 }

@@ -27,6 +27,24 @@ interface SolicitudDto {
   materiales?: MaterialDto[];
 }
 
+// Contrato de paginado del backend: { items, page, pageSize, total, totalPages }.
+interface PagedResultDto<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+// Página de solicitudes ya mapeadas al modelo del front.
+export interface SolicitudesPage {
+  items: Solicitud[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
 function mapSolicitud(d: SolicitudDto): Solicitud {
   return {
     id: d.id,
@@ -73,11 +91,34 @@ export async function createSolicitud(
   return dto.id;
 }
 
-// ─── Mis solicitudes (constructor) ───────────────────────────────────────────
+// ─── Mis solicitudes (constructor) — paginado real desde la API ──────────────
+// El backend ordena por createdAt desc (la más nueva primero) y resuelve el
+// Skip/Take en la DB. Devolvemos la página ya mapeada.
 
+export async function getMySolicitudesPage(
+  page = 1,
+  pageSize = 10
+): Promise<SolicitudesPage> {
+  const res = await api.get<PagedResultDto<SolicitudDto>>(
+    `/api/solicitudes/mine?page=${page}&pageSize=${pageSize}`
+  );
+  return {
+    items: res.items.map(mapSolicitud),
+    page: res.page,
+    pageSize: res.pageSize,
+    total: res.total,
+    totalPages: res.totalPages,
+  };
+}
+
+// Todas mis solicitudes en una sola llamada, para pantallas que agregan sobre el
+// total (stats, cierres, resumen). Pide el máximo tamaño de página que permite el
+// backend (100); alcanza de sobra para el uso real.
 export async function getMySolicitudes(_constructorId?: string): Promise<Solicitud[]> {
-  const dtos = await api.get<SolicitudDto[]>('/api/solicitudes/mine');
-  return dtos.map(mapSolicitud);
+  const res = await api.get<PagedResultDto<SolicitudDto>>(
+    '/api/solicitudes/mine?page=1&pageSize=100'
+  );
+  return res.items.map(mapSolicitud);
 }
 
 // ─── Detalle de solicitud con materiales ─────────────────────────────────────
@@ -100,6 +141,59 @@ export function listenToSolicitud(
     () => api.get<SolicitudDto>(`/api/solicitudes/${id}`),
     (dto) => callback(mapSolicitud(dto))
   );
+}
+
+// ─── ABM: editar / eliminar cabecera y detalle (materiales) ──────────────────
+
+export interface MaterialInput {
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
+export interface UpdateSolicitudInput {
+  title: string;
+  deliveryZone: string;
+  deadline: Date;
+  notes?: string;
+  attachmentUrl?: string;
+}
+
+function mapMaterial(d: MaterialDto): Material {
+  return { id: d.id, name: d.name, quantity: d.quantity, unit: d.unit };
+}
+
+export async function updateSolicitud(id: string, data: UpdateSolicitudInput): Promise<Solicitud> {
+  const dto = await api.put<SolicitudDto>(`/api/solicitudes/${id}`, {
+    title: data.title,
+    deliveryZone: data.deliveryZone,
+    deadline: data.deadline.toISOString(),
+    notes: data.notes ?? undefined,
+    attachmentUrl: data.attachmentUrl ?? undefined,
+  });
+  return mapSolicitud(dto);
+}
+
+export async function deleteSolicitud(id: string): Promise<void> {
+  await api.del(`/api/solicitudes/${id}`);
+}
+
+export async function addMaterial(solicitudId: string, m: MaterialInput): Promise<Material> {
+  return mapMaterial(await api.post<MaterialDto>(`/api/solicitudes/${solicitudId}/materiales`, m));
+}
+
+export async function updateMaterial(
+  solicitudId: string,
+  materialId: string,
+  m: MaterialInput
+): Promise<Material> {
+  return mapMaterial(
+    await api.put<MaterialDto>(`/api/solicitudes/${solicitudId}/materiales/${materialId}`, m)
+  );
+}
+
+export async function removeMaterial(solicitudId: string, materialId: string): Promise<void> {
+  await api.del(`/api/solicitudes/${solicitudId}/materiales/${materialId}`);
 }
 
 // ─── Feed para corralón por zona ──────────────────────────────────────────────

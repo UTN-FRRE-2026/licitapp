@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { colors } from '../../constants/colors';
 import { useAuthStore } from '../../stores/authStore';
-import { useMySolicitudes, useSolicitudesStats } from '../../hooks/useSolicitudes';
+import { useMySolicitudesPaged, useSolicitudesStats } from '../../hooks/useSolicitudes';
 import { useUnreadCount } from '../../hooks/useNotifications';
 import { SolicitudCard } from '../../components/SolicitudCard';
 import type { Solicitud } from '../../types';
@@ -23,8 +23,23 @@ export default function HomeConstructorScreen() {
   const user = useAuthStore((s) => s.user);
   const unread = useUnreadCount();
 
-  const { data: solicitudes = [], isLoading, refetch, isRefetching } = useMySolicitudes();
+  const {
+    data,
+    isLoading,
+    refetch,
+    isRefetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useMySolicitudesPaged();
+  // Aplanamos las páginas; el backend ya las devuelve con la más nueva primero.
+  const solicitudes = data?.pages.flatMap((p) => p.items) ?? [];
+  const total = data?.pages[0]?.total ?? solicitudes.length;
   const { activas, cerradas, totalOfertas } = useSolicitudesStats();
+
+  const handleEndReached = () => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  };
 
   const handleNuevaSolicitud = () => router.push('/(constructor)/nueva-solicitud');
 
@@ -35,6 +50,8 @@ export default function HomeConstructorScreen() {
         keyExtractor={(item: Solicitud) => item.id}
         renderItem={({ item }) => <SolicitudCard solicitud={item} />}
         contentContainerStyle={styles.list}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.4}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -112,9 +129,9 @@ export default function HomeConstructorScreen() {
             {/* Sección header */}
             <View style={styles.sectionRow}>
               <Text style={styles.sectionTitle}>Mis licitaciones</Text>
-              {solicitudes.length > 0 && (
+              {total > 0 && (
                 <Text style={styles.sectionCount}>
-                  {solicitudes.length} en total
+                  {total} en total
                 </Text>
               )}
             </View>
@@ -143,7 +160,16 @@ export default function HomeConstructorScreen() {
             )}
           </>
         }
-        ListFooterComponent={<View style={{ height: 20 }} />}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <ActivityIndicator
+              color={colors.brand[500]}
+              style={{ marginVertical: 20 }}
+            />
+          ) : (
+            <View style={{ height: 20 }} />
+          )
+        }
       />
     </SafeAreaView>
   );

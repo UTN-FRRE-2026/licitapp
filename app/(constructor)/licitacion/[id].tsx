@@ -85,7 +85,18 @@ export default function DetalleLicitacionScreen() {
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.navTitle}>Mi licitación</Text>
-        <View style={{ width: 36 }} />
+        {isOpen ? (
+          <TouchableOpacity
+            onPress={() =>
+              router.push({ pathname: '/(constructor)/editar-solicitud/[id]', params: { id } })
+            }
+            style={styles.editBtn}
+          >
+            <Text style={styles.editLink}>Editar</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 36 }} />
+        )}
       </View>
 
       <ScrollView
@@ -244,6 +255,8 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 36, height: 36, justifyContent: 'center' },
   backBtnText: { fontSize: 22, color: colors.gray[800] },
+  editBtn: { height: 36, justifyContent: 'center', paddingHorizontal: 4 },
+  editLink: { fontSize: 15, fontWeight: '600', color: colors.brand[600] },
   navTitle: { fontSize: 16, fontWeight: '700', color: colors.gray[900] },
   scroll: { padding: 16 },
 

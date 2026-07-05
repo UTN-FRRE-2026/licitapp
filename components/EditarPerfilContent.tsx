@@ -18,6 +18,7 @@ import { colors } from '../constants/colors';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { ZoneSelector } from './ui/ZoneSelector';
+import { CategoriasSelector } from './ui/CategoriasSelector';
 import { useAuthStore } from '../stores/authStore';
 import { updateMyProfile } from '../services/auth.service';
 
@@ -148,6 +149,8 @@ export function EditarPerfilContent() {
             />
           )}
         />
+
+        {isCorralon && <CategoriasSelector />}
 
         <View style={styles.readOnlyCard}>
           <Text style={styles.readOnlyLabel}>Correo electrónico</Text>
