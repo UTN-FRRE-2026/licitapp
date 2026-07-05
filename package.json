@@ -18,6 +18,7 @@
     "expo-print": "~56.0.3",
     "expo-router": "~56.2.9",
     "expo-sharing": "~56.0.16",
+    "expo-splash-screen": "~56.0.12",
     "expo-status-bar": "~56.0.4",
     "firebase": "^10.14.1",
     "react": "19.2.3",

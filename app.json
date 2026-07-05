@@ -29,6 +29,15 @@
       "expo-router",
       "expo-sharing",
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#F97316"
+        }
+      ],
+      [
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
