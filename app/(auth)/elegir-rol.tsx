@@ -15,9 +15,11 @@ import type { UserRole } from '../../types';
 
 export default function ElegirRolScreen() {
   const router = useRouter();
-  const [selected, setSelected] = useState<UserRole>('constructor');
+  // Sin default: hay que elegir explícitamente para no registrar por error como constructor.
+  const [selected, setSelected] = useState<UserRole | null>(null);
 
   const handleContinuar = () => {
+    if (!selected) return;
     router.push({ pathname: '/(auth)/registro', params: { role: selected } });
   };
 
@@ -80,7 +82,7 @@ export default function ElegirRolScreen() {
         </TouchableOpacity>
 
         <View style={styles.bottom}>
-          <Button label="Continuar →" onPress={handleContinuar} />
+          <Button label="Continuar →" onPress={handleContinuar} disabled={!selected} />
         </View>
 
       </ScrollView>

@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { AppState } from 'react-native';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -49,19 +50,40 @@ function AuthGuard() {
     return unsubscribe;
   }, []);
 
+  // Re-sincroniza el perfil desde el backend cada vez que la app vuelve al primer
+  // plano (y por ende tras iniciar sesión). Así, si cambia el rol/datos en la DB,
+  // la app lo toma sin necesidad de re-registrarse ni reiniciar.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      if (!useAuthStore.getState().user) return;
+      getMyProfile()
+        .then((fresh) => setUser(fresh))
+        .catch(() => {
+          /* silencioso: si falla, se mantiene el perfil actual */
+        });
+    });
+    return () => sub.remove();
+  }, []);
+
   useEffect(() => {
     if (loading) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
+    const group = segments[0];
+    const inAuthGroup = group === '(auth)';
 
-    if (!user && !inAuthGroup) {
-      router.replace('/(auth)');
-    } else if (user && inAuthGroup) {
-      if (user.role === 'constructor') {
-        router.replace('/(constructor)');
-      } else {
-        router.replace('/(corralon)');
-      }
+    if (!user) {
+      if (!inAuthGroup) router.replace('/(auth)');
+      return;
+    }
+
+    // Con usuario: asegurar que esté en el layout que corresponde a su rol.
+    // Cubre el login (viene de (auth)) y un cambio de rol en caliente (quedó en el
+    // grupo equivocado tras el re-sync).
+    if (user.role === 'constructor') {
+      if (inAuthGroup || group === '(corralon)') router.replace('/(constructor)');
+    } else {
+      if (inAuthGroup || group === '(constructor)') router.replace('/(corralon)');
     }
   }, [user, loading, segments]);
 

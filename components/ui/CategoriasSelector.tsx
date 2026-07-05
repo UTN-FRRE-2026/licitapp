@@ -19,6 +19,7 @@ export function CategoriasSelector() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -27,7 +28,7 @@ export function CategoriasSelector() {
         setAll(todas);
         setSelected(new Set(mias.map((c) => c.id)));
       } catch {
-        // silencioso: si falla, el selector queda vacío
+        setError(true);
       } finally {
         setLoading(false);
       }
@@ -59,6 +60,10 @@ export function CategoriasSelector() {
       <Text style={styles.label}>Rubros que ofrecés</Text>
       {loading ? (
         <ActivityIndicator color={colors.brand[500]} style={{ marginVertical: 12 }} />
+      ) : error ? (
+        <Text style={styles.hint}>No se pudieron cargar los rubros. Reintentá más tarde.</Text>
+      ) : all.length === 0 ? (
+        <Text style={styles.hint}>Todavía no hay rubros disponibles.</Text>
       ) : (
         <>
           <View style={styles.chips}>
@@ -90,6 +95,7 @@ export function CategoriasSelector() {
 const styles = StyleSheet.create({
   wrap: { marginBottom: 20 },
   label: { fontSize: 13, fontWeight: '500', color: colors.gray[700], marginBottom: 8 },
+  hint: { fontSize: 13, color: colors.gray[500], marginBottom: 14 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
   chip: {
     paddingHorizontal: 14,
