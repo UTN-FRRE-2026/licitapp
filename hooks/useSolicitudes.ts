@@ -1,8 +1,8 @@
 import {
   useQuery,
-  useInfiniteQuery,
   useMutation,
   useQueryClient,
+  keepPreviousData,
 } from '@tanstack/react-query';
 import {
   getMySolicitudes,
@@ -12,7 +12,7 @@ import {
 import { useAuthStore } from '../stores/authStore';
 import type { NuevaSolicitudFormData, Solicitud } from '../types';
 
-const PAGE_SIZE = 10;
+export const SOLICITUDES_PAGE_SIZE = 10;
 
 // ─── Mis licitaciones (todas, para stats/agregados) ──────────────────────────
 
@@ -26,19 +26,18 @@ export function useMySolicitudes() {
   });
 }
 
-// ─── Mis licitaciones paginadas (lista del home con "cargar más") ────────────
+// ─── Mis licitaciones por página (paginado con números Anterior/Siguiente) ───
 // Paginado real: cada página es una llamada a la API con Skip/Take en la DB.
+// keepPreviousData evita el parpadeo al cambiar de página.
 
-export function useMySolicitudesPaged() {
+export function useMySolicitudesPage(page: number) {
   const uid = useAuthStore((s) => s.user?.uid);
 
-  return useInfiniteQuery({
-    queryKey: ['solicitudes', 'mias', 'paged', uid],
-    queryFn: ({ pageParam }) => getMySolicitudesPage(pageParam, PAGE_SIZE),
-    initialPageParam: 1,
-    getNextPageParam: (last) =>
-      last.page < last.totalPages ? last.page + 1 : undefined,
+  return useQuery({
+    queryKey: ['solicitudes', 'mias', 'page', uid, page],
+    queryFn: () => getMySolicitudesPage(page, SOLICITUDES_PAGE_SIZE),
     enabled: !!uid,
+    placeholderData: keepPreviousData,
   });
 }
 

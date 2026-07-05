@@ -1,5 +1,5 @@
 // Pantalla 04 — Home / Mis licitaciones
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { colors } from '../../constants/colors';
 import { useAuthStore } from '../../stores/authStore';
-import { useMySolicitudesPaged, useSolicitudesStats } from '../../hooks/useSolicitudes';
+import { useMySolicitudesPage, useSolicitudesStats } from '../../hooks/useSolicitudes';
 import { useUnreadCount } from '../../hooks/useNotifications';
 import { SolicitudCard } from '../../components/SolicitudCard';
 import type { Solicitud } from '../../types';
@@ -23,23 +23,20 @@ export default function HomeConstructorScreen() {
   const user = useAuthStore((s) => s.user);
   const unread = useUnreadCount();
 
-  const {
-    data,
-    isLoading,
-    refetch,
-    isRefetching,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useMySolicitudesPaged();
-  // Aplanamos las páginas; el backend ya las devuelve con la más nueva primero.
-  const solicitudes = data?.pages.flatMap((p) => p.items) ?? [];
-  const total = data?.pages[0]?.total ?? solicitudes.length;
-  const { activas, cerradas, totalOfertas } = useSolicitudesStats();
+  const [page, setPage] = useState(1);
+  const { data, isLoading, isFetching, refetch, isRefetching } = useMySolicitudesPage(page);
 
-  const handleEndReached = () => {
-    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
-  };
+  // Solo la página actual; el backend la devuelve con la más nueva primero.
+  const solicitudes = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = data?.totalPages ?? 1;
+
+  // Si borran solicitudes y la página actual deja de existir, retroceder.
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) setPage(totalPages);
+  }, [totalPages, page]);
+
+  const { activas, cerradas, totalOfertas } = useSolicitudesStats();
 
   const handleNuevaSolicitud = () => router.push('/(constructor)/nueva-solicitud');
 
@@ -50,8 +47,6 @@ export default function HomeConstructorScreen() {
         keyExtractor={(item: Solicitud) => item.id}
         renderItem={({ item }) => <SolicitudCard solicitud={item} />}
         contentContainerStyle={styles.list}
-        onEndReached={handleEndReached}
-        onEndReachedThreshold={0.4}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -161,10 +156,12 @@ export default function HomeConstructorScreen() {
           </>
         }
         ListFooterComponent={
-          isFetchingNextPage ? (
-            <ActivityIndicator
-              color={colors.brand[500]}
-              style={{ marginVertical: 20 }}
+          totalPages > 1 ? (
+            <PaginationBar
+              page={page}
+              totalPages={totalPages}
+              loading={isFetching}
+              onChange={setPage}
             />
           ) : (
             <View style={{ height: 20 }} />
@@ -175,9 +172,105 @@ export default function HomeConstructorScreen() {
   );
 }
 
+// ─── Barra de paginado con números + Anterior/Siguiente ──────────────────────
+function PaginationBar({
+  page,
+  totalPages,
+  loading,
+  onChange,
+}: {
+  page: number;
+  totalPages: number;
+  loading: boolean;
+  onChange: (p: number) => void;
+}) {
+  // Ventana de hasta 5 números centrada en la página actual.
+  const maxButtons = 5;
+  let start = Math.max(1, page - 2);
+  const end = Math.min(totalPages, start + maxButtons - 1);
+  start = Math.max(1, end - maxButtons + 1);
+  const numbers: number[] = [];
+  for (let p = start; p <= end; p++) numbers.push(p);
+
+  const atFirst = page <= 1;
+  const atLast = page >= totalPages;
+
+  return (
+    <View style={styles.pagination}>
+      <View style={styles.pageRow}>
+        <TouchableOpacity
+          style={[styles.navBtn, atFirst && styles.navBtnDisabled]}
+          disabled={atFirst}
+          onPress={() => onChange(page - 1)}
+        >
+          <Text style={[styles.navBtnText, atFirst && styles.navDisabledText]}>‹ Anterior</Text>
+        </TouchableOpacity>
+
+        {numbers.map((p) => (
+          <TouchableOpacity
+            key={p}
+            style={[styles.pageNum, p === page && styles.pageNumActive]}
+            onPress={() => onChange(p)}
+          >
+            <Text style={[styles.pageNumText, p === page && styles.pageNumTextActive]}>{p}</Text>
+          </TouchableOpacity>
+        ))}
+
+        <TouchableOpacity
+          style={[styles.navBtn, atLast && styles.navBtnDisabled]}
+          disabled={atLast}
+          onPress={() => onChange(page + 1)}
+        >
+          <Text style={[styles.navBtnText, atLast && styles.navDisabledText]}>Siguiente ›</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.pageInfo}>
+        {loading ? 'Cargando…' : `Página ${page} de ${totalPages}`}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.gray[50] },
   list: { padding: 20, paddingBottom: 40 },
+
+  // Paginado
+  pagination: { marginTop: 16, alignItems: 'center', gap: 8 },
+  pageRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  navBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    backgroundColor: colors.white,
+  },
+  navBtnDisabled: { opacity: 0.4 },
+  navBtnText: { fontSize: 13, fontWeight: '600', color: colors.brand[600] },
+  navDisabledText: { color: colors.gray[400] },
+  pageNum: {
+    minWidth: 36,
+    height: 36,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pageNumActive: { backgroundColor: colors.brand[500], borderColor: colors.brand[500] },
+  pageNumText: { fontSize: 14, fontWeight: '600', color: colors.gray[700] },
+  pageNumTextActive: { color: colors.white },
+  pageInfo: { fontSize: 12, color: colors.gray[500] },
 
   // Header
   header: {
