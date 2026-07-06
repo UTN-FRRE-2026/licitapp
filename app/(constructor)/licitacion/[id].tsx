@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { colors } from '../../../constants/colors';
+import { BackButton } from '../../../components/ui/BackButton';
 import { Card } from '../../../components/ui/Card';
 import { Pill } from '../../../components/ui/Pill';
 import { Button } from '../../../components/ui/Button';
@@ -81,9 +82,7 @@ export default function DetalleLicitacionScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.nav, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>←</Text>
-        </TouchableOpacity>
+        <BackButton />
         <Text style={styles.navTitle}>Mi licitación</Text>
         {isOpen ? (
           <TouchableOpacity
@@ -253,8 +252,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[100],
   },
-  backBtn: { width: 36, height: 36, justifyContent: 'center' },
-  backBtnText: { fontSize: 22, color: colors.gray[800] },
   editBtn: { height: 36, justifyContent: 'center', paddingHorizontal: 4 },
   editLink: { fontSize: 15, fontWeight: '600', color: colors.brand[600] },
   navTitle: { fontSize: 16, fontWeight: '700', color: colors.gray[900] },

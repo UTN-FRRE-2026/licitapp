@@ -15,6 +15,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { colors } from '../constants/colors';
+import { BackButton } from './ui/BackButton';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { ZoneSelector } from './ui/ZoneSelector';
@@ -75,9 +76,7 @@ export function EditarPerfilContent() {
   return (
     <View style={styles.container}>
       <View style={[styles.nav, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
+        <BackButton />
         <Text style={styles.navTitle}>Editar perfil</Text>
         <View style={{ width: 36 }} />
       </View>
@@ -183,8 +182,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[100],
   },
-  backBtn: { width: 36, height: 36, justifyContent: 'center' },
-  backIcon: { fontSize: 22, color: colors.gray[800] },
   navTitle: { fontSize: 16, fontWeight: '700', color: colors.gray[900] },
   scroll: { padding: 20, paddingBottom: 40 },
   readOnlyCard: {

@@ -22,6 +22,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { format, addHours } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { colors } from '../../constants/colors';
+import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useCreateSolicitud } from '../../hooks/useSolicitudes';
@@ -183,9 +184,7 @@ export default function NuevaSolicitudScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={styles.backIcon}>←</Text>
-          </TouchableOpacity>
+          <BackButton />
           <Text style={styles.headerTitle}>Nueva solicitud</Text>
           <View style={{ width: 40 }} />
         </View>
@@ -476,8 +475,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  backIcon: { fontSize: 20, color: colors.gray[700] },
   headerTitle: { fontSize: 18, fontWeight: '700', color: colors.gray[900] },
   desc: { fontSize: 14, color: colors.gray[500], marginBottom: 20, lineHeight: 20 },
 

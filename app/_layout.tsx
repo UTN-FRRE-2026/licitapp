@@ -1,12 +1,18 @@
 import React, { useEffect } from 'react';
-import { AppState } from 'react-native';
+import { AppState, View, StyleSheet } from 'react-native';
 import { Slot, useRouter, useSegments } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore } from '../stores/authStore';
 import { onAuthStateChange, getMyProfile } from '../services/auth.service';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useImmersiveNavBar } from '../hooks/useImmersiveNavBar';
+import { LoadingScreen } from '../components/ui/LoadingScreen';
+
+// Mantener el splash nativo visible hasta que sepamos si hay sesión (evita el
+// parpadeo del login cuando el usuario ya está logueado).
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,11 +72,11 @@ function AuthGuard() {
     return () => sub.remove();
   }, []);
 
+  const group = segments[0];
+  const inAuthGroup = group === '(auth)';
+
   useEffect(() => {
     if (loading) return;
-
-    const group = segments[0];
-    const inAuthGroup = group === '(auth)';
 
     if (!user) {
       if (!inAuthGroup) router.replace('/(auth)');
@@ -87,7 +93,33 @@ function AuthGuard() {
     }
   }, [user, loading, segments]);
 
-  return <Slot />;
+  // "Listo" = sesión resuelta Y el usuario ya está en el grupo que le corresponde.
+  // Mientras no lo esté, se muestra la pantalla de carga por encima del Slot, así
+  // nunca se ve el login si hay sesión (ni la pantalla equivocada durante el redirect).
+  const onDestinationGroup = user
+    ? user.role === 'constructor'
+      ? group === '(constructor)'
+      : group === '(corralon)'
+    : inAuthGroup;
+  const ready = !loading && segments.length > 0 && onDestinationGroup;
+
+  // Ocultar el splash nativo recién cuando estamos en la pantalla final.
+  useEffect(() => {
+    if (ready) SplashScreen.hideAsync().catch(() => {});
+  }, [ready]);
+
+  // El Slot se mantiene SIEMPRE montado (expo-router lo necesita para navegar);
+  // la pantalla de carga se superpone como overlay hasta que todo esté listo.
+  return (
+    <>
+      <Slot />
+      {!ready && (
+        <View style={StyleSheet.absoluteFill}>
+          <LoadingScreen />
+        </View>
+      )}
+    </>
+  );
 }
 
 export default function RootLayout() {

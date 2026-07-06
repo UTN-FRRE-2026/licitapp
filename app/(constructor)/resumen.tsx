@@ -12,6 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../constants/colors';
+import { BackButton } from '../../components/ui/BackButton';
 import { Card } from '../../components/ui/Card';
 import { useMySolicitudes } from '../../hooks/useSolicitudes';
 
@@ -45,9 +46,7 @@ export default function ResumenConstructorScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.nav, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
+        <BackButton />
         <Text style={styles.navTitle}>Mi actividad</Text>
         <View style={{ width: 36 }} />
       </View>
@@ -158,8 +157,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[100],
   },
-  backBtn: { width: 36, height: 36, justifyContent: 'center' },
-  backIcon: { fontSize: 22, color: colors.gray[800] },
   navTitle: { fontSize: 16, fontWeight: '700', color: colors.gray[900] },
   scroll: { padding: 16 },
 

@@ -11,6 +11,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../../constants/colors';
+import { BackButton } from '../../../components/ui/BackButton';
 import { Card } from '../../../components/ui/Card';
 import { Pill } from '../../../components/ui/Pill';
 import { SegmentedControl } from '../../../components/ui/SegmentedControl';
@@ -66,9 +67,7 @@ export default function CompararOfertasScreen() {
     <View style={styles.container}>
       {/* Nav */}
       <View style={[styles.nav, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>←</Text>
-        </TouchableOpacity>
+        <BackButton />
         <View style={styles.navCenter}>
           {loadingSol ? (
             <ActivityIndicator size="small" color={colors.brand[500]} />
@@ -211,8 +210,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.gray[100],
     gap: 8,
   },
-  backBtn: { width: 36, height: 36, justifyContent: 'center' },
-  backBtnText: { fontSize: 22, color: colors.gray[800] },
   navCenter: { flex: 1 },
   navTitle: { fontSize: 15, fontWeight: '700', color: colors.gray[900] },
   navSub: { fontSize: 12, color: colors.gray[500] },

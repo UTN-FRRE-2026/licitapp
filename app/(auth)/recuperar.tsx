@@ -15,6 +15,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { colors } from '../../constants/colors';
+import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { sendPasswordReset } from '../../services/auth.service';
@@ -63,9 +64,7 @@ export default function RecuperarScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Text style={styles.backIcon}>←</Text>
-            </TouchableOpacity>
+            <BackButton />
           </View>
 
           {sent ? (
@@ -137,8 +136,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.white },
   container: { flexGrow: 1, padding: 20, paddingBottom: 40 },
   header: { marginBottom: 32 },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  backIcon: { fontSize: 20, color: colors.gray[700] },
   title: {
     fontSize: 26,
     fontWeight: '700',

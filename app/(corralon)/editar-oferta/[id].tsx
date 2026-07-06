@@ -19,6 +19,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { colors } from '../../../constants/colors';
+import { BackButton } from '../../../components/ui/BackButton';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { useOfertaById, useUpdateOferta } from '../../../hooks/useOfertas';
@@ -143,9 +144,7 @@ export default function EditarOfertaScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={[styles.nav, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>←</Text>
-        </TouchableOpacity>
+        <BackButton />
         <Text style={styles.navTitle}>Editar oferta</Text>
         <View style={{ width: 36 }} />
       </View>
@@ -297,8 +296,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[100],
   },
-  backBtn: { width: 36, height: 36, justifyContent: 'center' },
-  backBtnText: { fontSize: 22, color: colors.gray[800] },
   navTitle: { fontSize: 16, fontWeight: '700', color: colors.gray[900] },
   scroll: { padding: 16 },
 

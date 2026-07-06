@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useQueryClient } from '@tanstack/react-query';
 import { colors } from '../../../constants/colors';
+import { BackButton } from '../../../components/ui/BackButton';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { ZoneSelector } from '../../../components/ui/ZoneSelector';
@@ -218,9 +219,7 @@ export default function EditarSolicitudScreen() {
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={styles.backIcon}>←</Text>
-          </TouchableOpacity>
+          <BackButton />
           <Text style={styles.headerTitle}>Editar solicitud</Text>
           <View style={{ width: 40 }} />
         </View>
@@ -343,8 +342,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[100],
   },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  backIcon: { fontSize: 20, color: colors.gray[700] },
   headerTitle: { fontSize: 18, fontWeight: '700', color: colors.gray[900] },
 
   sectionRow: {

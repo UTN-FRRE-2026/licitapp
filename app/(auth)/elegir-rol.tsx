@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { colors } from '../../constants/colors';
+import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
 import type { UserRole } from '../../types';
 
@@ -29,9 +30,7 @@ export default function ElegirRolScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={styles.backIcon}>←</Text>
-          </TouchableOpacity>
+          <BackButton />
           <Text style={styles.step}>PASO 1 DE 2</Text>
           <View style={{ width: 40 }} />
         </View>
@@ -99,8 +98,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 24,
   },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  backIcon: { fontSize: 20, color: colors.gray[700] },
   step: { fontSize: 13, color: colors.gray[400], fontWeight: '600' },
   title: { fontSize: 26, fontWeight: '700', color: colors.gray[900], marginBottom: 6, letterSpacing: -0.5 },
   subtitle: { fontSize: 14, color: colors.gray[500], marginBottom: 24 },
